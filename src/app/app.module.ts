@@ -7,6 +7,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { validateEnvironment } from '../database/config/validate-env';
 import { InitialChurchSchema1760000000000 } from '../database/migrations/1760000000000-InitialChurchSchema';
 import { DropRoleColumns1791190000000 } from '../database/migrations/1791190000000-DropRoleColumns';
+import { CreateUsersTable1791200000000 } from '../database/migrations/1791200000000-CreateUsersTable';
 import { PubSubModule } from '../libs/pubsub/pubsub.module';
 import { CacheModule } from '../libs/cache/cache.module';
 import { StorageModule } from '../libs/storage/storage.module';
@@ -51,7 +52,11 @@ import { DomainEventsSubscriber } from '../libs/pubsub/domain-events.subscriber'
             ? { rejectUnauthorized: false }
             : false,
         synchronize: config.get<string>('NODE_ENV') !== 'production',
-        migrations: [InitialChurchSchema1760000000000, DropRoleColumns1791190000000],
+        migrations: [
+          InitialChurchSchema1760000000000,
+          DropRoleColumns1791190000000,
+          CreateUsersTable1791200000000,
+        ],
         migrationsRun: config.get<string>('TYPEORM_MIGRATIONS_RUN') === 'true',
         autoLoadEntities: true,
       }),

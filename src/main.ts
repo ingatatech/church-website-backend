@@ -64,7 +64,8 @@ async function bootstrap() {
     app,
     SwaggerModule.createDocument(app, swagger),
   );
-  await app.listen(process.env.APP_PORT ?? 3000);
+  const port = Number(process.env.PORT ?? process.env.APP_PORT ?? 3000);
+  await app.listen(port);
   const url = await app.getUrl();
   logger.log(`Church Website API is running at: ${url}/api`);
   logger.log(`Open the API documentation: ${url}/api/docs`);
