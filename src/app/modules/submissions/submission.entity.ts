@@ -1,4 +1,10 @@
-import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 export const SUBMISSION_TYPES = ['contact', 'prayer', 'visitor'] as const;
 export type SubmissionType = (typeof SUBMISSION_TYPES)[number];
 @Entity('visitor_submissions')
@@ -10,6 +16,6 @@ export class Submission {
   @Column({ type: 'varchar', length: 254 }) email: string;
   @Column({ type: 'varchar', length: 40, nullable: true }) phone: string | null;
   @Column({ type: 'text' }) message: string;
-  @Column({ default: 'new' }) status: string;
+  @Column({ type: 'varchar', length: 20, default: 'new' }) status: string;
   @CreateDateColumn() createdAt: Date;
 }
