@@ -12,6 +12,7 @@ import { ContentRecord } from '../app/modules/content/content.entity';
 import { Submission } from '../app/modules/submissions/submission.entity';
 import { InitialChurchSchema1760000000000 } from './migrations/1760000000000-InitialChurchSchema';
 import { DropRoleColumns1791190000000 } from './migrations/1791190000000-DropRoleColumns';
+import { CreateUsersTable1791200000000 } from './migrations/1791200000000-CreateUsersTable';
 
 const dataSource = new DataSource({
   type: 'postgres',
@@ -37,7 +38,11 @@ const dataSource = new DataSource({
     ContentRecord,
     Submission,
   ],
-  migrations: [InitialChurchSchema1760000000000, DropRoleColumns1791190000000],
+  migrations: [
+    InitialChurchSchema1760000000000,
+    DropRoleColumns1791190000000,
+    CreateUsersTable1791200000000,
+  ],
   synchronize: false,
 });
 export default dataSource;
