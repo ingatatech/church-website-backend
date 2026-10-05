@@ -7,6 +7,17 @@ import { SubmissionsService } from './submissions.service';
 @Controller('submissions')
 export class SubmissionsController {
   constructor(private readonly service: SubmissionsService) {}
-  @Post() @ApiOperation({ summary: 'Submit a contact message, prayer request, or visitor inquiry', description: 'Submission is stored for follow-up. Treat prayer requests as sensitive personal information.' }) @ApiCreatedResponse({ type: ApiResponseDto })
-  async create(@Body() dto: CreateSubmissionDto) { return ApiResponseDto.created('Your message has been received. Thank you for contacting us.', await this.service.create(dto)); }
+  @Post()
+  @ApiOperation({
+    summary: 'Submit a contact message, prayer request, or visitor inquiry',
+    description:
+      'Submission is stored for follow-up. Treat prayer requests as sensitive personal information.',
+  })
+  @ApiCreatedResponse({ type: ApiResponseDto })
+  async create(@Body() dto: CreateSubmissionDto) {
+    return ApiResponseDto.created(
+      'Your message has been received. Thank you for contacting us.',
+      await this.service.create(dto),
+    );
+  }
 }

@@ -4,5 +4,9 @@ import { ContentRecord } from './content.entity';
 import { ContentController } from './content.controller';
 import { ContentService } from './content.service';
 
-@Module({ imports: [TypeOrmModule.forFeature([ContentRecord])], controllers: [ContentController], providers: [ContentService] })
+@Module({
+  imports: [TypeOrmModule.forFeature([ContentRecord])],
+  controllers: [ContentController],
+  providers: [ContentService],
+})
 export class ContentModule {}

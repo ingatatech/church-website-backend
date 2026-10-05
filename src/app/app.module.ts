@@ -1,36 +1,74 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { EventEmitterModule } from '@nestjs/event-emitter';
+import { validateEnvironment } from '../database/config/validate-env';
+import { InitialChurchSchema1760000000000 } from '../database/migrations/1760000000000-InitialChurchSchema';
+import { DropRoleColumns1791190000000 } from '../database/migrations/1791190000000-DropRoleColumns';
+import { PubSubModule } from '../libs/pubsub/pubsub.module';
+import { CacheModule } from '../libs/cache/cache.module';
+import { StorageModule } from '../libs/storage/storage.module';
+import { RedisModule } from '../libs/redis/redis.module';
+import { OtpModule } from '../libs/otp/otp.module';
+import { JwtTokenModule } from '../libs/jwt/jwt-token.module';
+import { I18nModule } from '../libs/i18n/i18n.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { SermonsModule } from './modules/sermons/sermons.module';
+import { EventsModule } from './modules/events/events.module';
+import { MinistriesModule } from './modules/ministries/ministries.module';
+import { InquiriesModule } from './modules/inquiries/inquiries.module';
+import { AuditModule } from './modules/audit/audit.module';
 import { ContentModule } from './modules/content/content.module';
 import { SubmissionsModule } from './modules/submissions/submissions.module';
-import { ContentRecord } from './modules/content/content.entity';
-import { Submission } from './modules/submissions/submission.entity';
 import { DomainEventsSubscriber } from '../libs/pubsub/domain-events.subscriber';
+
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, validate: validateEnvironment }),
     EventEmitterModule.forRoot(),
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 120 }]),
+    PubSubModule,
+    RedisModule,
+    OtpModule,
+    JwtTokenModule,
+    I18nModule,
+    CacheModule,
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        type: 'postgres',
-        url: config.get<string>('DATABASE_URL'),
+        type: 'postgres' as const,
+        url: config.get<string>('DATABASE_URL') || undefined,
         host: config.get<string>('POSTGRES_HOST', 'localhost'),
         port: config.get<number>('POSTGRES_PORT', 5432),
         username: config.get<string>('POSTGRES_USER', 'postgres'),
         password: config.get<string>('POSTGRES_PASSWORD'),
         database: config.get<string>('POSTGRES_DB'),
-        ssl: config.get<string>('DATABASE_SSL_CONNECTION') === 'true' ? { rejectUnauthorized: false } : false,
-        entities: [ContentRecord, Submission],
+        ssl:
+          config.get<string>('DATABASE_SSL_CONNECTION') === 'true'
+            ? { rejectUnauthorized: false }
+            : false,
         synchronize: config.get<string>('NODE_ENV') !== 'production',
+        migrations: [InitialChurchSchema1760000000000, DropRoleColumns1791190000000],
+        migrationsRun: config.get<string>('TYPEORM_MIGRATIONS_RUN') === 'true',
         autoLoadEntities: true,
       }),
     }),
+    AuthModule,
+    SermonsModule,
+    EventsModule,
+    MinistriesModule,
+    InquiriesModule,
+    AuditModule,
+    StorageModule,
     ContentModule,
     SubmissionsModule,
   ],
-  providers: [DomainEventsSubscriber],
+  providers: [
+    DomainEventsSubscriber,
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+  ],
 })
 export class AppModule {}

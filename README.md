@@ -1,14 +1,17 @@
 # Church Website Management API
 
-NestJS and TypeORM backend for the church website SRS. The initial API covers reusable church content (pages, ministries, services, events, sermons, announcements, resources, FAQs, leaders, and testimonials) and public contact, prayer, and visitor submissions.
+NestJS and TypeORM backend for the church website SRS. It provides administrator JWT authentication, sermons, events, ministries, public inquiries and their administration, audit logs, media upload, and reusable church content (pages, services, announcements, resources, FAQs, leaders, and testimonials).
 
 ## Run locally
 
-1. Create a PostgreSQL database locally and configure `.env` from `.env.example`. Keep `.env` out of version control.
-2. Install dependencies with `npm install`.
-3. Start the API with `npm run start:dev`.
+1. Create a local PostgreSQL database and configure `.env` from `.env.example`. Keep `.env` out of version control.
+2. Start Redis locally (host and port are configurable; the API still starts if Redis is temporarily unreachable).
+3. Install dependencies with `pnpm install`.
+4. Start the API with `pnpm start:dev`.
 
-The service reads `APP_PORT` and PostgreSQL settings from `.env`. TypeORM schema synchronization is enabled outside production to support local development; use reviewed migrations in production. `DATABASE_URL` can specify a complete connection string or the individual `POSTGRES_*` fields can be used. SSL is disabled for the local database when `DATABASE_SSL_CONNECTION=false`.
+The service reads PostgreSQL, JWT, and Redis settings from `.env`. TypeORM schema synchronization is enabled outside production for local development; production deployments should apply reviewed migrations with `pnpm migration:run` and keep `TYPEORM_MIGRATIONS_RUN=false` unless automatic startup migrations are intentionally desired. `DATABASE_URL` can specify a complete connection string or individual `POSTGRES_*` fields can be used. SSL is disabled for local PostgreSQL when `DATABASE_SSL_CONNECTION=false`.
+
+Set a strong `JWT_SECRET` (at least 32 characters) and `ADMIN_INITIAL_PASSWORD` (at least 12 characters), then create the first administrator with `pnpm seed:admin`. The seed creates `admin@church.org` only if that account does not exist and stores a bcrypt hash. Do not use example values in a deployed environment.
 
 ## API
 
@@ -22,11 +25,20 @@ Base path: `/api`. Interactive OpenAPI documentation: `/api/docs`.
 | PATCH | `/api/content/:id` | Update a CMS content record (send `x-admin-api-key`) |
 | DELETE | `/api/content/:id` | Delete a CMS content record (send `x-admin-api-key`) |
 | POST | `/api/submissions` | Submit `contact`, `prayer`, or `visitor` message |
+| POST | `/api/auth/login` | Administrator login, returns JWT |
+| GET | `/api/auth/profile` | Get current administrator profile (Bearer token) |
+| GET / POST / PATCH / DELETE | `/api/sermons` | Public published sermon reads; JWT required for writes |
+| GET / POST / PATCH / DELETE | `/api/events` | Public published event reads; JWT required for writes |
+| GET / POST / PATCH / DELETE | `/api/ministries` | Public published ministry reads; JWT required for writes |
+| POST | `/api/inquiries/contact`, `/visitor`, `/prayer` | Public inquiry intake |
+| GET / PATCH | `/api/inquiries/:type` | JWT protected inquiry management |
+| GET | `/api/audit` | JWT protected audit event history |
+| POST | `/api/media/upload` | JWT protected local media upload (15 MB limit) |
 
-Successful responses use `{ success, statusCode, message, data }`; errors use `{ success: false, statusCode, message }`. CMS writes require a configured `ADMIN_API_KEY` using the `x-admin-api-key` header. Submissions should be handled as private information, especially prayer requests.
+Successful responses use `{ success, data, timestamp }` (existing content endpoints also include a message); errors use `{ success: false, statusCode, error, timestamp }`. CMS writes require a JWT Bearer token. Submissions should be handled as private information, especially prayer requests.
 
 ## Architecture notes
 
-HTTP controllers and DTO validation live in feature modules under `src/app/modules`. Services own persistence and publish domain events (`content.created`, `content.updated`, `content.deleted`, and `submission.created`) through Nest's in-process event emitter. TypeORM entities define persistence models; shared response and exception formatting live under `src/helpers`. The event emitter is in-process pub/sub for decoupling application features; use a durable broker if events must survive restarts or cross process boundaries.
+HTTP controllers, services, DTOs, and TypeORM entities live in feature modules under `src/app`. Inquiry, authentication, sermon, and event domain changes publish Redis messages; the audit subscriber writes selected event metadata to PostgreSQL. Inquiry events contain only a record ID and type, never contact details or prayer text. Shared response and exception formatting live under `src/helpers`.
 
-Content records use a shared `content_records` table with a typed content category and JSONB `details` for SRS-specific attributes such as speaker/scripture/media links, venue, event dates, or leader role. Visitor submissions use a separate `visitor_submissions` table.
+Content records use a shared `content_records` table with a typed content category and JSONB `details` for SRS-specific attributes. Media uploads are stored under `uploads/` by default and served under `/uploads/`; configure `MEDIA_UPLOAD_DIR` for another local path.

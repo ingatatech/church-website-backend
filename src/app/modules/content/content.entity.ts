@@ -1,6 +1,24 @@
-import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
-export const CONTENT_TYPES = ['pages', 'ministries', 'services', 'events', 'sermons', 'announcements', 'resources', 'faqs', 'leaders', 'testimonials'] as const;
+export const CONTENT_TYPES = [
+  'pages',
+  'ministries',
+  'services',
+  'events',
+  'sermons',
+  'announcements',
+  'resources',
+  'faqs',
+  'leaders',
+  'testimonials',
+] as const;
 export type ContentType = (typeof CONTENT_TYPES)[number];
 
 @Entity('content_records')
@@ -12,7 +30,7 @@ export class ContentRecord {
   @Column({ type: 'varchar', length: 200 }) slug: string;
   @Column({ type: 'text', nullable: true }) description: string | null;
   @Column({ type: 'jsonb', default: {} }) details: Record<string, unknown>;
-  @Column({ default: false }) published: boolean;
+  @Column({ type: 'boolean', default: false }) published: boolean;
   @Column({ type: 'timestamptz', nullable: true }) publishedAt: Date | null;
   @CreateDateColumn() createdAt: Date;
   @UpdateDateColumn() updatedAt: Date;
