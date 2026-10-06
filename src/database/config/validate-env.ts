@@ -1,5 +1,6 @@
 export interface Environment {
   NODE_ENV: string;
+  CORS_ORIGINS: string;
   APP_PORT: number;
   DATABASE_URL?: string;
   POSTGRES_HOST: string;
@@ -44,6 +45,7 @@ export function validateEnvironment(
     throw new Error('Configure DATABASE_URL or POSTGRES_DB in the environment');
   return {
     NODE_ENV: environment,
+    CORS_ORIGINS: String(values.CORS_ORIGINS ?? ''),
     APP_PORT: port,
     DATABASE_URL: values.DATABASE_URL ? String(values.DATABASE_URL) : undefined,
     POSTGRES_HOST: String(values.POSTGRES_HOST ?? 'localhost'),

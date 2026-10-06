@@ -1,5 +1,6 @@
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
 import * as express from 'express';
 import { resolve } from 'node:path';
@@ -11,8 +12,9 @@ import { TransformInterceptor } from './helpers/interceptors/transform.intercept
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
+  const config = app.get(ConfigService);
   app.use(helmet());
-  const corsOrigins = (process.env.CORS_ORIGINS ?? '')
+  const corsOrigins = (config.get<string>('CORS_ORIGINS') ?? '')
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
