@@ -18,6 +18,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { CONTENT_TYPES } from './content.entity';
@@ -26,6 +27,7 @@ import { CreateContentDto, UpdateContentDto } from './content.dto';
 import { ContentService } from './content.service';
 import { ApiResponseDto } from '../../../helpers/message/api.response';
 import { AdminKeyGuard } from '../../../helpers/guards/admin-key.guard';
+import { ANNOUNCEMENT_CATEGORIES } from './announcement.constants';
 
 @ApiTags('Church content')
 @Controller('content')
@@ -38,16 +40,30 @@ export class ContentController {
       'Browse church pages, ministries, services, events, sermons, announcements, resources, FAQs, leaders, or testimonials.',
   })
   @ApiParam({ name: 'type', enum: CONTENT_TYPES })
+  @ApiQuery({
+    name: 'category',
+    required: false,
+    enum: ANNOUNCEMENT_CATEGORIES,
+    description:
+      'Filter the public announcement listing by a supported category.',
+  })
   @ApiOkResponse({ type: ApiResponseDto })
   async list(
     @Param('type') type: ContentType,
     @Query('page', new ParseIntPipe({ optional: true })) page = 1,
     @Query('limit', new ParseIntPipe({ optional: true })) limit = 20,
+    @Query('category') category?: string,
   ) {
     this.validateType(type);
     return ApiResponseDto.ok(
       'Content loaded successfully',
-      await this.service.list(type, page, Math.min(limit, 100)),
+      type === 'announcements'
+        ? await this.service.listPublicAnnouncements(
+            category,
+            Math.min(limit, 100),
+            page,
+          )
+        : await this.service.list(type, page, Math.min(limit, 100)),
     );
   }
   @Get(':type/:slug')

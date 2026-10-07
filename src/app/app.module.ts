@@ -23,6 +23,7 @@ import { InquiriesModule } from './modules/inquiries/inquiries.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { ContentModule } from './modules/content/content.module';
 import { SubmissionsModule } from './modules/submissions/submissions.module';
+import { AdminManagementModule } from './modules/admin/admin-management.module';
 import { DomainEventsSubscriber } from '../libs/pubsub/domain-events.subscriber';
 
 
@@ -70,6 +71,7 @@ import { DomainEventsSubscriber } from '../libs/pubsub/domain-events.subscriber'
     StorageModule,
     ContentModule,
     SubmissionsModule,
+    AdminManagementModule,
   ],
   providers: [
     DomainEventsSubscriber,

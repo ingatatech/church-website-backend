@@ -2,6 +2,7 @@ export interface Environment {
   NODE_ENV: string;
   CORS_ORIGINS: string;
   APP_PORT: number;
+  CLOUDINARY_URL?: string;
   DATABASE_URL?: string;
   POSTGRES_HOST: string;
   POSTGRES_PORT: number;
@@ -47,6 +48,9 @@ export function validateEnvironment(
     NODE_ENV: environment,
     CORS_ORIGINS: String(values.CORS_ORIGINS ?? ''),
     APP_PORT: port,
+    CLOUDINARY_URL: values.CLOUDINARY_URL
+      ? String(values.CLOUDINARY_URL)
+      : undefined,
     DATABASE_URL: values.DATABASE_URL ? String(values.DATABASE_URL) : undefined,
     POSTGRES_HOST: String(values.POSTGRES_HOST ?? 'localhost'),
     POSTGRES_PORT: databasePort,
