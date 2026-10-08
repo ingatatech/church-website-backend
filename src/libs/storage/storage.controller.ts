@@ -1,44 +1,44 @@
 import {
   BadRequestException,
   Controller,
+  Get,
   Post,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import {
   ApiBearerAuth,
   ApiConsumes,
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { diskStorage } from 'multer';
-import { extname } from 'node:path';
-import { existsSync, mkdirSync } from 'node:fs';
-import { randomUUID } from 'node:crypto';
 import { JwtAuthGuard } from '../../app/modules/auth/jwt-auth.guard';
-
-const uploadDirectory = process.env.MEDIA_UPLOAD_DIR ?? 'uploads';
-if (!existsSync(uploadDirectory))
-  mkdirSync(uploadDirectory, { recursive: true });
+import { CloudinaryStorageService } from './cloudinary-storage.service';
+import { ApiResponseDto } from '../../helpers/message/api.response';
 
 @ApiTags('Media storage')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('media')
 export class StorageController {
+  constructor(private readonly storage: CloudinaryStorageService) {}
+
+  @Get()
+  @ApiOperation({ summary: 'List recent Cloudinary media (administrator)' })
+  async list() {
+    return ApiResponseDto.ok(
+      'Media library loaded successfully.',
+      await this.storage.listRecent(),
+    );
+  }
+
   @Post('upload')
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: diskStorage({
-        destination: uploadDirectory,
-        filename: (_request, file, callback) =>
-          callback(
-            null,
-            `${randomUUID()}${extname(file.originalname).toLowerCase()}`,
-          ),
-      }),
+      storage: memoryStorage(),
       limits: { fileSize: 15 * 1024 * 1024 },
       fileFilter: (_request, file, callback) =>
         callback(
@@ -55,11 +55,10 @@ export class StorageController {
   })
   upload(@UploadedFile() file: Express.Multer.File) {
     if (!file) throw new BadRequestException('Upload a supported media file');
-    return {
-      filename: file.filename,
-      mimeType: file.mimetype,
-      size: file.size,
-      url: `/uploads/${file.filename}`,
-    };
+    return this.storage
+      .upload(file)
+      .then((result) =>
+        ApiResponseDto.created('Media uploaded successfully.', result),
+      );
   }
 }

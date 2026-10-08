@@ -18,6 +18,7 @@ export const CONTENT_TYPES = [
   'faqs',
   'leaders',
   'testimonials',
+  'settings',
 ] as const;
 export type ContentType = (typeof CONTENT_TYPES)[number];
 
