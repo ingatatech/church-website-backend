@@ -14,8 +14,16 @@ export class EventsService {
     private readonly pubsub: RedisPubSubService,
   ) {}
   list() {
+    return this.repository
+      .createQueryBuilder('event')
+      .where('event.status = :status', { status: PublicationStatus.PUBLISHED })
+      .andWhere('event.date >= CURRENT_DATE')
+      .orderBy('event.date', 'ASC')
+      .addOrderBy('event.time', 'ASC')
+      .getMany();
+  }
+  listForAdministration() {
     return this.repository.find({
-      where: { status: PublicationStatus.PUBLISHED },
       order: { date: 'ASC', time: 'ASC' },
     });
   }

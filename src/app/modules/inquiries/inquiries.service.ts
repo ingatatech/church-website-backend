@@ -27,21 +27,13 @@ export class InquiriesService {
     private readonly pubsub: RedisPubSubService,
   ) {}
   async contact(dto: CreateInquiryDto) {
-    return this.save(
-      this.contacts as Repository<InquiryRecord>,
-      'contact',
-      dto,
-    );
+    return this.save(this.contacts, 'contact', dto);
   }
   async visitor(dto: CreateInquiryDto) {
-    return this.save(
-      this.visitors as Repository<InquiryRecord>,
-      'visitor',
-      dto,
-    );
+    return this.save(this.visitors, 'visitor', dto);
   }
   async prayer(dto: CreateInquiryDto) {
-    return this.save(this.prayers as Repository<InquiryRecord>, 'prayer', dto);
+    return this.save(this.prayers, 'prayer', dto);
   }
   list(type: string) {
     return this.repositoryFor(type).find({ order: { createdAt: 'DESC' } });
@@ -67,9 +59,9 @@ export class InquiriesService {
     return { id: row.id, status: 'received' };
   }
   private repositoryFor(type: string): Repository<InquiryRecord> {
-    if (type === 'contact') return this.contacts as Repository<InquiryRecord>;
-    if (type === 'visitor') return this.visitors as Repository<InquiryRecord>;
-    if (type === 'prayer') return this.prayers as Repository<InquiryRecord>;
+    if (type === 'contact') return this.contacts;
+    if (type === 'visitor') return this.visitors;
+    if (type === 'prayer') return this.prayers;
     throw new BadRequestException(
       'Inquiry type must be contact, visitor, or prayer',
     );

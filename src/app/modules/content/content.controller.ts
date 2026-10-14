@@ -13,8 +13,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
+  ApiBearerAuth,
   ApiCreatedResponse,
-  ApiHeader,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
@@ -26,13 +26,17 @@ import type { ContentType } from './content.entity';
 import { CreateContentDto, UpdateContentDto } from './content.dto';
 import { ContentService } from './content.service';
 import { ApiResponseDto } from '../../../helpers/message/api.response';
-import { AdminKeyGuard } from '../../../helpers/guards/admin-key.guard';
-import { ANNOUNCEMENT_CATEGORIES } from './announcement.constants';
+import { FaqService } from './faq.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AdminRoleGuard } from '../auth/admin-role.guard';
 
 @ApiTags('Church content')
 @Controller('content')
 export class ContentController {
-  constructor(private readonly service: ContentService) {}
+  constructor(
+    private readonly service: ContentService,
+    private readonly faqs: FaqService,
+  ) {}
   @Get(':type')
   @ApiOperation({
     summary: 'List published content',
@@ -43,9 +47,7 @@ export class ContentController {
   @ApiQuery({
     name: 'category',
     required: false,
-    enum: ANNOUNCEMENT_CATEGORIES,
-    description:
-      'Filter the public announcement listing by a supported category.',
+    description: 'Filter published FAQs or announcements by category.',
   })
   @ApiOkResponse({ type: ApiResponseDto })
   async list(
@@ -53,17 +55,20 @@ export class ContentController {
     @Query('page', new ParseIntPipe({ optional: true })) page = 1,
     @Query('limit', new ParseIntPipe({ optional: true })) limit = 20,
     @Query('category') category?: string,
+    @Query('search') search?: string,
   ) {
     this.validateType(type);
     return ApiResponseDto.ok(
       'Content loaded successfully',
-      type === 'announcements'
-        ? await this.service.listPublicAnnouncements(
-            category,
-            Math.min(limit, 100),
-            page,
-          )
-        : await this.service.list(type, page, Math.min(limit, 100)),
+      type === 'faqs'
+        ? await this.faqs.list({ category, search }, false)
+        : type === 'announcements'
+          ? await this.service.listPublicAnnouncements(
+              category,
+              Math.min(limit, 100),
+              page,
+            )
+          : await this.service.list(type, page, Math.min(limit, 100)),
     );
   }
   @Get(':type/:slug')
@@ -77,11 +82,11 @@ export class ContentController {
     );
   }
   @Post()
-  @UseGuards(AdminKeyGuard)
-  @ApiHeader({ name: 'x-admin-api-key', required: true })
+  @UseGuards(JwtAuthGuard, AdminRoleGuard)
+  @ApiBearerAuth()
   @ApiOperation({
     summary: 'Create a content record',
-    description: 'Requires the configured administrator API key.',
+    description: 'Requires an active administrator account.',
   })
   @ApiCreatedResponse({ type: ApiResponseDto })
   async create(@Body() dto: CreateContentDto) {
@@ -91,11 +96,11 @@ export class ContentController {
     );
   }
   @Patch(':id')
-  @UseGuards(AdminKeyGuard)
-  @ApiHeader({ name: 'x-admin-api-key', required: true })
+  @UseGuards(JwtAuthGuard, AdminRoleGuard)
+  @ApiBearerAuth()
   @ApiOperation({
     summary: 'Update a content record',
-    description: 'Requires the configured administrator API key.',
+    description: 'Requires an active administrator account.',
   })
   @ApiOkResponse({ type: ApiResponseDto })
   async update(
@@ -108,11 +113,11 @@ export class ContentController {
     );
   }
   @Delete(':id')
-  @UseGuards(AdminKeyGuard)
-  @ApiHeader({ name: 'x-admin-api-key', required: true })
+  @UseGuards(JwtAuthGuard, AdminRoleGuard)
+  @ApiBearerAuth()
   @ApiOperation({
     summary: 'Delete a content record',
-    description: 'Requires the configured administrator API key.',
+    description: 'Requires an active administrator account.',
   })
   @ApiOkResponse({ type: ApiResponseDto })
   async remove(@Param('id', ParseUUIDPipe) id: string) {

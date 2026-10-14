@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 
@@ -6,7 +11,10 @@ import Redis from 'ioredis';
 export class RedisService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RedisService.name);
   private client: Redis | null = null;
-  private readonly memoryStore = new Map<string, { value: string; expiresAt?: number }>();
+  private readonly memoryStore = new Map<
+    string,
+    { value: string; expiresAt?: number }
+  >();
 
   constructor(private readonly config: ConfigService) {}
 
@@ -19,6 +27,8 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       host,
       port,
       password,
+      connectTimeout: 1500,
+      commandTimeout: 1500,
       lazyConnect: true,
       enableOfflineQueue: false,
       maxRetriesPerRequest: 1,
@@ -32,7 +42,9 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       await this.client.connect();
       this.logger.log('RedisService connected');
     } catch {
-      this.logger.warn('Redis unavailable, using fallback in-memory store for tokens/OTP');
+      this.logger.warn(
+        'Redis unavailable, using fallback in-memory store for tokens/OTP',
+      );
       this.client = null;
     }
   }

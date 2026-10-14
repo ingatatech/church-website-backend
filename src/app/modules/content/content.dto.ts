@@ -17,10 +17,6 @@ export class CreateContentDto {
   @IsString()
   @Length(1, 180)
   title: string;
-  @ApiProperty({ example: 'sunday-worship' })
-  @IsString()
-  @Length(1, 200)
-  slug: string;
   @ApiPropertyOptional() @IsOptional() @IsString() description?: string;
   @ApiPropertyOptional({ type: Object })
   @IsOptional()
@@ -42,15 +38,14 @@ export class UpdateContentDto {
   @IsString()
   @Length(1, 180)
   title?: string;
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  @Length(1, 200)
-  slug?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() description?: string;
   @ApiPropertyOptional({ type: Object })
   @IsOptional()
   @IsObject()
   details?: Record<string, unknown>;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() published?: boolean;
+  @ApiPropertyOptional({ description: 'Explicitly withdraw a published settings record. Saving a draft does not unpublish its live version.' })
+  @IsOptional()
+  @IsBoolean()
+  unpublish?: boolean;
 }

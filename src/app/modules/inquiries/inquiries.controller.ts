@@ -17,6 +17,7 @@ import {
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AdminRoleGuard } from '../auth/admin-role.guard';
 import {
   CreateInquiryDto,
   UpdateInquiryStatusDto,
@@ -46,7 +47,7 @@ export class InquiriesController {
     return this.service.prayer(dto);
   }
   @Get(':type')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AdminRoleGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'List inquiries of one type (administrator)' })
   @ApiOkResponse()
@@ -54,7 +55,7 @@ export class InquiriesController {
     return this.service.list(type);
   }
   @Patch(':type/:id/status')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AdminRoleGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update an inquiry status (administrator)' })
   @ApiOkResponse()

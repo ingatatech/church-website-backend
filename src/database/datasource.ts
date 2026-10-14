@@ -13,6 +13,13 @@ import { Submission } from '../app/modules/submissions/submission.entity';
 import { InitialChurchSchema1760000000000 } from './migrations/1760000000000-InitialChurchSchema';
 import { DropRoleColumns1791190000000 } from './migrations/1791190000000-DropRoleColumns';
 import { CreateUsersTable1791200000000 } from './migrations/1791200000000-CreateUsersTable';
+import { ExtendChurchEventDetails1791210000000 } from './migrations/1791210000000-ExtendChurchEventDetails';
+import { ExtendSermonsAndAddSpeakers1791220000000 } from './migrations/1791220000000-ExtendSermonsAndAddSpeakers';
+import { ExtendMinistryDetails1791230000000 } from './migrations/1791230000000-ExtendMinistryDetails';
+import { AddUserRoles1791240000000 } from './migrations/1791240000000-AddUserRoles';
+import { AddNestOutboxSchema1791250000000 } from './migrations/1791250000000-AddNestOutboxSchema';
+import { Speaker } from '../app/modules/sermons/entities/speaker.entity';
+import { User } from '../app/modules/users/entities/user.entity';
 
 const dataSource = new DataSource({
   type: 'postgres',
@@ -28,7 +35,9 @@ const dataSource = new DataSource({
       : false,
   entities: [
     AdminUser,
+    User,
     Sermon,
+    Speaker,
     ChurchEvent,
     Ministry,
     ContactInquiry,
@@ -42,6 +51,11 @@ const dataSource = new DataSource({
     InitialChurchSchema1760000000000,
     DropRoleColumns1791190000000,
     CreateUsersTable1791200000000,
+    ExtendChurchEventDetails1791210000000,
+    ExtendSermonsAndAddSpeakers1791220000000,
+    ExtendMinistryDetails1791230000000,
+    AddUserRoles1791240000000,
+    AddNestOutboxSchema1791250000000,
   ],
   synchronize: false,
 });

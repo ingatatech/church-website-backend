@@ -36,12 +36,20 @@ export class AuthService {
 
   async register(dto: RegisterDto) {
     if (!dto.acceptTerms) {
-      sendError(HttpStatus.BAD_REQUEST, this.i18n.t('auth.terms_required'), 'BAD_REQUEST');
+      sendError(
+        HttpStatus.BAD_REQUEST,
+        this.i18n.t('auth.terms_required'),
+        'BAD_REQUEST',
+      );
     }
 
     const existing = await this.usersService.findByEmail(dto.email);
     if (existing) {
-      sendError(HttpStatus.CONFLICT, this.i18n.t('auth.email_registered'), 'CONFLICT');
+      sendError(
+        HttpStatus.CONFLICT,
+        this.i18n.t('auth.email_registered'),
+        'CONFLICT',
+      );
     }
 
     const requestId = randomUUID();
@@ -57,8 +65,7 @@ export class AuthService {
     );
 
     const otp = await this.otpService.generate(requestId);
-    console.log(`[OTP] ${dto.email}: ${otp}`);
-    await this.emailPublisher.publishOtpEmail(dto.email, otp).catch(() => undefined);
+    await this.emailPublisher.publishOtpEmail(requestId, dto.email, otp);
 
     return {
       message: this.i18n.t('auth.code_sent_email'),
@@ -69,9 +76,15 @@ export class AuthService {
   }
 
   async verifyOtp(dto: VerifyOtpDto) {
-    const pendingData = await this.redisService.get(this.pendingRegKey(dto.requestId));
+    const pendingData = await this.redisService.get(
+      this.pendingRegKey(dto.requestId),
+    );
     if (!pendingData) {
-      sendError(HttpStatus.BAD_REQUEST, this.i18n.t('auth.no_pending_registration'), 'BAD_REQUEST');
+      sendError(
+        HttpStatus.BAD_REQUEST,
+        this.i18n.t('auth.no_pending_registration'),
+        'BAD_REQUEST',
+      );
       return;
     }
 
@@ -105,7 +118,7 @@ export class AuthService {
     if (!pending) return;
 
     const otp = await this.otpService.generate(requestId);
-    await this.emailPublisher.publishOtpEmail(pending.email, otp).catch(() => undefined);
+    await this.emailPublisher.publishOtpEmail(requestId, pending.email, otp);
 
     return {
       message: this.i18n.t('auth.code_resent_email'),
@@ -117,17 +130,29 @@ export class AuthService {
 
   async setupPassword(userId: string, dto: SetupPasswordDto) {
     if (dto.password !== dto.confirmPassword) {
-      sendError(HttpStatus.BAD_REQUEST, this.i18n.t('auth.passwords_mismatch'), 'BAD_REQUEST');
+      sendError(
+        HttpStatus.BAD_REQUEST,
+        this.i18n.t('auth.passwords_mismatch'),
+        'BAD_REQUEST',
+      );
     }
 
     const user = await this.usersService.findById(userId);
     if (!user) {
-      sendError(HttpStatus.NOT_FOUND, this.i18n.t('auth.user_not_found'), 'NOT_FOUND');
+      sendError(
+        HttpStatus.NOT_FOUND,
+        this.i18n.t('auth.user_not_found'),
+        'NOT_FOUND',
+      );
       return;
     }
 
     if (user.status === UserStatus.active) {
-      sendError(HttpStatus.CONFLICT, this.i18n.t('auth.password_already_set'), 'CONFLICT');
+      sendError(
+        HttpStatus.CONFLICT,
+        this.i18n.t('auth.password_already_set'),
+        'CONFLICT',
+      );
     }
 
     const hashed = await bcrypt.hash(dto.password, 10);
@@ -148,10 +173,18 @@ export class AuthService {
     const user = await this.usersService.findByEmail(dto.email);
 
     if (user && user.status === UserStatus.pending) {
-      sendError(HttpStatus.FORBIDDEN, this.i18n.t('auth.password_not_set'), 'FORBIDDEN');
+      sendError(
+        HttpStatus.FORBIDDEN,
+        this.i18n.t('auth.password_not_set'),
+        'FORBIDDEN',
+      );
+    }
+    if (user?.status === UserStatus.disabled) {
+      throw new UnauthorizedException('Invalid credentials');
     }
 
-    if (!user || !user.password) throw new UnauthorizedException('Invalid credentials');
+    if (!user || !user.password)
+      throw new UnauthorizedException('Invalid credentials');
 
     const valid = await bcrypt.compare(dto.password, user.password);
     if (!valid) throw new UnauthorizedException('Invalid credentials');
@@ -170,11 +203,16 @@ export class AuthService {
   }
 
   async refresh(userId: string, refreshToken: string) {
-    const isValid = await this.jwtTokenService.validateRefreshToken(userId, refreshToken);
-    if (!isValid) throw new UnauthorizedException('Invalid or expired refresh token');
+    const isValid = await this.jwtTokenService.validateRefreshToken(
+      userId,
+      refreshToken,
+    );
+    if (!isValid)
+      throw new UnauthorizedException('Invalid or expired refresh token');
 
     const user = await this.usersService.findById(userId);
-    if (!user) throw new UnauthorizedException('Invalid or expired refresh token');
+    if (!user)
+      throw new UnauthorizedException('Invalid or expired refresh token');
 
     return this.generateAndStoreTokens(user);
   }
@@ -185,9 +223,11 @@ export class AuthService {
     return { success: true };
   }
 
-  async googleLogin(
-    googleUser: { email: string; fullName: string; avatar: string },
-  ) {
+  async googleLogin(googleUser: {
+    email: string;
+    fullName: string;
+    avatar: string;
+  }) {
     let user = await this.usersService.findByEmail(googleUser.email);
 
     if (!user) {
@@ -218,7 +258,11 @@ export class AuthService {
   async forgotPassword(email: string) {
     const user = await this.usersService.findByEmail(email);
     if (!user) {
-      sendError(HttpStatus.NOT_FOUND, this.i18n.t('auth.no_account_found'), 'NOT_FOUND');
+      sendError(
+        HttpStatus.NOT_FOUND,
+        this.i18n.t('auth.no_account_found'),
+        'NOT_FOUND',
+      );
       return;
     }
 
@@ -229,7 +273,9 @@ export class AuthService {
       this.PENDING_REG_TTL,
     );
     const otp = await this.otpService.generate(requestId);
-    await this.emailPublisher.publishPasswordResetEmail(user.email, otp).catch(() => undefined);
+    await this.emailPublisher
+      .publishPasswordResetEmail(user.email, otp)
+      .catch(() => undefined);
 
     return {
       message: this.i18n.t('auth.code_sent_email'),
@@ -240,9 +286,15 @@ export class AuthService {
   }
 
   async forgotPasswordConfirmOtp(requestId: string, otp: string) {
-    const storedUserId = await this.redisService.get(this.resetPasswordKey(requestId));
+    const storedUserId = await this.redisService.get(
+      this.resetPasswordKey(requestId),
+    );
     if (!storedUserId) {
-      sendError(HttpStatus.BAD_REQUEST, this.i18n.t('auth.invalid_expired_request'), 'BAD_REQUEST');
+      sendError(
+        HttpStatus.BAD_REQUEST,
+        this.i18n.t('auth.invalid_expired_request'),
+        'BAD_REQUEST',
+      );
       return;
     }
 
@@ -250,7 +302,11 @@ export class AuthService {
     await this.redisService.del(this.resetPasswordKey(requestId));
 
     const resetToken = randomUUID();
-    await this.redisService.set(this.resetTokenKey(resetToken), storedUserId, this.RESET_TOKEN_TTL);
+    await this.redisService.set(
+      this.resetTokenKey(resetToken),
+      storedUserId,
+      this.RESET_TOKEN_TTL,
+    );
 
     return {
       message: this.i18n.t('auth.otp_verified_set_password'),
@@ -264,17 +320,29 @@ export class AuthService {
     confirmPassword: string,
   ) {
     if (newPassword !== confirmPassword) {
-      sendError(HttpStatus.BAD_REQUEST, this.i18n.t('auth.passwords_mismatch'), 'BAD_REQUEST');
+      sendError(
+        HttpStatus.BAD_REQUEST,
+        this.i18n.t('auth.passwords_mismatch'),
+        'BAD_REQUEST',
+      );
     }
 
-    const storedUserId = await this.redisService.get(this.resetTokenKey(resetToken));
+    const storedUserId = await this.redisService.get(
+      this.resetTokenKey(resetToken),
+    );
     if (!storedUserId) {
-      sendError(HttpStatus.BAD_REQUEST, this.i18n.t('auth.invalid_expired_token'), 'BAD_REQUEST');
+      sendError(
+        HttpStatus.BAD_REQUEST,
+        this.i18n.t('auth.invalid_expired_token'),
+        'BAD_REQUEST',
+      );
       return;
     }
 
     const hashed = await bcrypt.hash(newPassword, 10);
-    const user = await this.usersService.update(storedUserId, { password: hashed });
+    const user = await this.usersService.update(storedUserId, {
+      password: hashed,
+    });
     await this.redisService.del(this.resetTokenKey(resetToken));
 
     if (user.email) {
@@ -303,7 +371,11 @@ export class AuthService {
   ): Promise<PendingRegistration | null> {
     const data = await this.redisService.get(this.pendingRegKey(requestId));
     if (!data) {
-      sendError(HttpStatus.BAD_REQUEST, this.i18n.t('auth.no_pending_registration'), 'BAD_REQUEST');
+      sendError(
+        HttpStatus.BAD_REQUEST,
+        this.i18n.t('auth.no_pending_registration'),
+        'BAD_REQUEST',
+      );
       return null;
     }
     return typeof data === 'string'
@@ -322,7 +394,8 @@ export class AuthService {
   }
 
   private sanitize(user: User) {
-    const { password: _pw, ...safe } = user;
+    const { password, ...safe } = user;
+    void password;
     return safe;
   }
 

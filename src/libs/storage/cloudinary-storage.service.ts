@@ -1,4 +1,8 @@
-import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import {
+  Injectable,
+  ServiceUnavailableException,
+  BadGatewayException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 type CloudinaryUploadResult = {
@@ -22,24 +26,23 @@ export class CloudinaryStorageService {
   constructor(private readonly config: ConfigService) {}
 
   async upload(file: Express.Multer.File) {
-    const { cloudName, authorization } = this.credentials();
-
     const resourceType = file.mimetype.startsWith('image/')
       ? 'image'
       : file.mimetype.startsWith('audio/') || file.mimetype.startsWith('video/')
         ? 'video'
         : 'raw';
-    const form = new FormData();
-    form.append(
-      'file',
-      new Blob([Uint8Array.from(file.buffer)], { type: file.mimetype }),
-      file.originalname,
-    );
-    form.append('folder', 'church-website');
 
-    let response: Response;
+    const { cloudName, authorization } = this.credentials();
     try {
-      response = await fetch(
+      const form = new FormData();
+      form.append(
+        'file',
+        new Blob([Uint8Array.from(file.buffer)], { type: file.mimetype }),
+        file.originalname,
+      );
+      form.append('folder', 'church-website');
+
+      const response = await fetch(
         `https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudName)}/${resourceType}/upload`,
         {
           method: 'POST',
@@ -47,28 +50,30 @@ export class CloudinaryStorageService {
           body: form,
         },
       );
-    } catch {
+
+      const result = (await response
+        .json()
+        .catch(() => null)) as CloudinaryUploadResult | null;
+      if (response.ok && result?.secure_url && result.public_id) {
+        return {
+          filename: result.public_id,
+          publicId: result.public_id,
+          mimeType: file.mimetype,
+          size: result.bytes ?? file.size,
+          format: result.format,
+          resourceType: result.resource_type ?? resourceType,
+          url: result.secure_url,
+        };
+      }
+      throw new BadGatewayException(
+        'Cloudinary could not store this file. Please try again.',
+      );
+    } catch (error) {
+      if (error instanceof BadGatewayException) throw error;
       throw new ServiceUnavailableException(
-        'Could not connect to Cloudinary. Please try the upload again.',
+        'Could not connect to Cloudinary. Please try again.',
       );
     }
-
-    const result = (await response.json().catch(() => null)) as CloudinaryUploadResult | null;
-    if (!response.ok || !result?.secure_url || !result.public_id) {
-      throw new ServiceUnavailableException(
-        'Cloudinary could not store this file. Please try the upload again.',
-      );
-    }
-
-    return {
-      filename: result.public_id,
-      publicId: result.public_id,
-      mimeType: file.mimetype,
-      size: result.bytes ?? file.size,
-      format: result.format,
-      resourceType: result.resource_type ?? resourceType,
-      url: result.secure_url,
-    };
   }
 
   async listRecent() {
@@ -91,9 +96,9 @@ export class CloudinaryStorageService {
             'Could not connect to Cloudinary. Please try again.',
           );
         }
-        const result = (await response.json().catch(() => null)) as
-          | { resources?: CloudinaryResource[] }
-          | null;
+        const result = (await response.json().catch(() => null)) as {
+          resources?: CloudinaryResource[];
+        } | null;
         if (!response.ok || !result?.resources) {
           throw new ServiceUnavailableException(
             'Could not load the Cloudinary media library.',

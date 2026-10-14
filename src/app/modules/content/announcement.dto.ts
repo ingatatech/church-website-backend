@@ -5,7 +5,6 @@ import {
   IsOptional,
   IsString,
   Length,
-  Matches,
   MaxLength,
 } from 'class-validator';
 import {
@@ -18,12 +17,6 @@ export class CreateAnnouncementDto {
   @IsString()
   @Length(1, 180)
   title: string;
-
-  @ApiProperty({ example: 'special-sunday-worship-service' })
-  @IsString()
-  @Length(1, 200)
-  @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
-  slug: string;
 
   @ApiProperty({ example: 'Join us for a special Sunday service.' })
   @IsString()

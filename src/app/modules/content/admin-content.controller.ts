@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AdminRoleGuard } from '../auth/admin-role.guard';
 import { CONTENT_TYPES } from './content.entity';
 import type { ContentType } from './content.entity';
 import { CreateContentDto, UpdateContentDto } from './content.dto';
@@ -19,7 +20,7 @@ import { ContentService } from './content.service';
 
 @ApiTags('Admin content')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, AdminRoleGuard)
 @Controller('admin/content')
 export class AdminContentController {
   constructor(private readonly content: ContentService) {}
@@ -53,6 +54,10 @@ export class AdminContentController {
   private validateType(type: string) {
     if (!(CONTENT_TYPES as readonly string[]).includes(type))
       throw new BadRequestException('Unsupported content type');
+    if (type === 'faqs')
+      throw new BadRequestException(
+        'Use the FAQ management endpoints at /admin/faqs.',
+      );
     if (type === 'announcements')
       throw new BadRequestException(
         'Use the announcement management endpoints at /admin/announcements.',

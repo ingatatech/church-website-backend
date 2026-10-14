@@ -26,6 +26,7 @@ import {
 } from '@nestjs/swagger';
 import { ApiResponseDto } from '../../../helpers/message/api.response';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AdminRoleGuard } from '../auth/admin-role.guard';
 import {
   ANNOUNCEMENT_CATEGORIES,
   ANNOUNCEMENT_STATUSES,
@@ -38,7 +39,7 @@ import { ContentService } from './content.service';
 
 @ApiTags('Announcement management')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, AdminRoleGuard)
 @Controller('admin/announcements')
 export class AdminAnnouncementsController {
   constructor(private readonly content: ContentService) {}
@@ -106,7 +107,7 @@ export class AdminAnnouncementsController {
   @ApiOperation({
     summary: 'Create an announcement',
     description:
-      'Creates a draft, publishes immediately, or schedules publication. Image, category, title, description, slug and publication date are required.',
+      'Creates a draft, publishes immediately, or schedules publication. The URL slug is generated from the title. Image, category, title, description and publication date are required.',
   })
   @ApiCreatedResponse({ description: 'Announcement created successfully.' })
   @ApiBadRequestResponse({
@@ -114,7 +115,7 @@ export class AdminAnnouncementsController {
       'Announcement fields, image, or date configuration are invalid.',
   })
   @ApiConflictResponse({
-    description: 'The announcement slug is already in use.',
+    description: 'The generated announcement slug could not be created.',
   })
   @ApiUnauthorizedResponse({
     description: 'A valid administrator session is required.',

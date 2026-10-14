@@ -1,4 +1,5 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
+import { randomInt } from 'node:crypto';
 import { RedisService } from '../redis/redis.service';
 import { sendError } from '../../helpers/message/sendResult';
 
@@ -9,7 +10,7 @@ export class OtpService {
   constructor(private readonly redis: RedisService) {}
 
   async generate(requestId: string): Promise<string> {
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otp = randomInt(100_000, 1_000_000).toString();
     await this.redis.set(this.key(requestId), otp, this.OTP_TTL);
     return otp;
   }
@@ -25,6 +26,10 @@ export class OtpService {
     }
     await this.redis.del(this.key(requestId));
     return true;
+  }
+
+  async isCurrent(requestId: string, otp: string): Promise<boolean> {
+    return (await this.redis.get(this.key(requestId))) === otp;
   }
 
   private key(requestId: string): string {
