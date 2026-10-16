@@ -12,6 +12,10 @@ export interface Environment {
   POSTGRES_DB: string;
   JWT_SECRET: string;
   JWT_EXPIRES_IN: string;
+  // Upstash Redis REST (preferred)
+  UPSTASH_REDIS_REST_URL?: string;
+  UPSTASH_REDIS_REST_TOKEN?: string;
+  // Legacy ioredis TCP (optional fallback)
   REDIS_HOST: string;
   REDIS_PORT: number;
   REDIS_PASSWORD?: string;
@@ -45,7 +49,9 @@ export function validateEnvironment(
     databasePort > 65535
   )
     throw new Error('POSTGRES_PORT must be a valid TCP port');
-  if (!Number.isInteger(redisPort) || redisPort < 1 || redisPort > 65535)
+  // Only validate legacy Redis port if Upstash REST is not configured
+  const hasUpstash = Boolean(values.UPSTASH_REDIS_REST_URL && values.UPSTASH_REDIS_REST_TOKEN);
+  if (!hasUpstash && (!Number.isInteger(redisPort) || redisPort < 1 || redisPort > 65535))
     throw new Error('REDIS_PORT must be a valid TCP port');
   if (!values.DATABASE_URL && !values.POSTGRES_DB)
     throw new Error('Configure DATABASE_URL or POSTGRES_DB in the environment');
@@ -82,6 +88,12 @@ export function validateEnvironment(
     POSTGRES_DB: String(values.POSTGRES_DB ?? ''),
     JWT_SECRET: secret,
     JWT_EXPIRES_IN: String(values.JWT_EXPIRES_IN ?? '1h'),
+    UPSTASH_REDIS_REST_URL: values.UPSTASH_REDIS_REST_URL
+      ? String(values.UPSTASH_REDIS_REST_URL).trim()
+      : undefined,
+    UPSTASH_REDIS_REST_TOKEN: values.UPSTASH_REDIS_REST_TOKEN
+      ? String(values.UPSTASH_REDIS_REST_TOKEN).trim()
+      : undefined,
     REDIS_HOST: String(values.REDIS_HOST ?? 'localhost'),
     REDIS_PORT: redisPort,
     REDIS_PASSWORD: values.REDIS_PASSWORD

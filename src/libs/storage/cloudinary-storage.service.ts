@@ -4,6 +4,7 @@ import {
   BadGatewayException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { extractCloudinaryPublicId } from './cloudinary-url';
 
 type CloudinaryUploadResult = {
   public_id?: string;
@@ -114,6 +115,46 @@ export class CloudinaryStorageService {
         (right.created_at ?? '').localeCompare(left.created_at ?? ''),
       )
       .slice(0, 100);
+  }
+
+  async deleteFile(urlOrPublicId: string): Promise<boolean> {
+    const extracted = extractCloudinaryPublicId(urlOrPublicId);
+    if (!extracted) return false;
+
+    let creds: { cloudName: string; authorization: string };
+    try {
+      creds = this.credentials();
+    } catch {
+      return false;
+    }
+
+    const { cloudName, authorization } = creds;
+    const { publicId, resourceType } = extracted;
+
+    try {
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudName)}/${resourceType}/destroy`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: authorization,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ public_id: publicId }),
+        },
+      );
+
+      const result = (await response.json().catch(() => null)) as {
+        result?: string;
+      } | null;
+
+      return (
+        response.ok &&
+        (result?.result === 'ok' || result?.result === 'not found')
+      );
+    } catch {
+      return false;
+    }
   }
 
   private credentials() {

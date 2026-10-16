@@ -14,6 +14,7 @@ import { InquiryRecord } from './entities/inquiry.entity';
 import {
   CreateInquiryDto,
   UpdateInquiryStatusDto,
+  ReplyInquiryDto,
 } from './dto/create-inquiry.dto';
 @Injectable()
 export class InquiriesService {
@@ -44,6 +45,23 @@ export class InquiriesService {
     if (!row) throw new NotFoundException('Inquiry was not found');
     row.status = dto.status;
     return repository.save(row);
+  }
+  async reply(type: string, id: string, dto: ReplyInquiryDto) {
+    const repository = this.repositoryFor(type);
+    const row = await repository.findOneBy({ id });
+    if (!row) throw new NotFoundException('Inquiry was not found');
+    row.reply = dto.reply;
+    row.repliedAt = new Date();
+    // Auto-advance status from 'new' to 'in_progress' when a reply is saved
+    if (row.status === 'new') row.status = 'in_progress';
+    const saved = await repository.save(row);
+    // Publish reply event for downstream email delivery
+    await this.pubsub.publish(DOMAIN_EVENTS.INQUIRY_RECEIVED, {
+      id: saved.id,
+      type,
+      event: 'reply',
+    });
+    return { id: saved.id, status: saved.status, repliedAt: saved.repliedAt };
   }
   private async save(
     repository: Repository<InquiryRecord>,

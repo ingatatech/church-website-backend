@@ -8,6 +8,7 @@ import { AuditLogService } from '../audit/audit-log.service';
 import { JwtTokenService } from '../../../libs/jwt/jwt-token.service';
 import { OtpService } from '../../../libs/otp/otp.service';
 import { EmailPublisher } from '../../../libs/pubsub/publishers/email.publisher';
+import { VerificationOtpEmailService } from '../../../libs/pubsub/services/verification-otp-email.service';
 import { RedisService } from '../../../libs/redis/redis.service';
 import { I18nService } from '../../../libs/i18n/i18n.service';
 import { sendError } from '../../../helpers/message/sendResult';
@@ -28,6 +29,7 @@ export class AuthService {
     private readonly auditLogService: AuditLogService,
     private readonly otpService: OtpService,
     private readonly emailPublisher: EmailPublisher,
+    private readonly verificationOtpEmail: VerificationOtpEmailService,
     private readonly redisService: RedisService,
     private readonly i18n: I18nService,
   ) {}
@@ -65,7 +67,11 @@ export class AuthService {
     );
 
     const otp = await this.otpService.generate(requestId);
-    await this.emailPublisher.publishOtpEmail(requestId, dto.email, otp);
+    await this.verificationOtpEmail.sendVerificationCode({
+      requestId,
+      email: dto.email,
+      otp,
+    });
 
     return {
       message: this.i18n.t('auth.code_sent_email'),
@@ -118,7 +124,11 @@ export class AuthService {
     if (!pending) return;
 
     const otp = await this.otpService.generate(requestId);
-    await this.emailPublisher.publishOtpEmail(requestId, pending.email, otp);
+    await this.verificationOtpEmail.sendVerificationCode({
+      requestId,
+      email: pending.email,
+      otp,
+    });
 
     return {
       message: this.i18n.t('auth.code_resent_email'),

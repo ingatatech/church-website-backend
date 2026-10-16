@@ -5,9 +5,6 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { MailModule, FileMailTransport, SmtpTransport } from '@nestjs/mail';
-import { OutboxModule, OutboxStorage } from '@nestjs/outbox';
-import { PostgresOutboxStore, fromTypeOrm } from '@nestjs/outbox/postgres';
-import { DataSource } from 'typeorm';
 import { validateEnvironment } from '../database/config/validate-env';
 import { InitialChurchSchema1760000000000 } from '../database/migrations/1760000000000-InitialChurchSchema';
 import { DropRoleColumns1791190000000 } from '../database/migrations/1791190000000-DropRoleColumns';
@@ -68,18 +65,6 @@ import { DomainEventsSubscriber } from '../libs/pubsub/domain-events.subscriber'
         };
       },
     }),
-    OutboxModule.forRoot({
-      retry: {
-        attempts: 8,
-        backoff: {
-          delay: '5s',
-          factor: 2,
-          maxDelay: '1m',
-          jitter: 'equal',
-        },
-      },
-      relay: { pollInterval: '1s', lease: '60s', publishTimeout: '45s' },
-    }),
     PubSubModule,
     RedisModule,
     OtpModule,
@@ -112,8 +97,7 @@ import { DomainEventsSubscriber } from '../libs/pubsub/domain-events.subscriber'
           AddUserRoles1791240000000,
           AddNestOutboxSchema1791250000000,
         ],
-        migrationsRun:
-          config.get<string>('TYPEORM_MIGRATIONS_RUN') === 'true',
+        migrationsRun: config.get<string>('TYPEORM_MIGRATIONS_RUN') === 'true',
         autoLoadEntities: true,
       }),
     }),
@@ -130,21 +114,6 @@ import { DomainEventsSubscriber } from '../libs/pubsub/domain-events.subscriber'
   ],
   providers: [
     DomainEventsSubscriber,
-    {
-      provide: PostgresOutboxStore,
-      inject: [DataSource, OutboxStorage],
-      useFactory: (
-        dataSource: DataSource,
-        outboxStorage: OutboxStorage,
-      ) =>
-        new PostgresOutboxStore(
-          {
-            executor: fromTypeOrm(dataSource),
-            migrate: false,
-          },
-          outboxStorage,
-        ),
-    },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })

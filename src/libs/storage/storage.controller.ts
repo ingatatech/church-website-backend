@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Controller,
+  Delete,
   Get,
   Post,
   Query,
@@ -73,5 +74,22 @@ export class StorageController {
       .then((result) =>
         ApiResponseDto.created('Media uploaded successfully.', result),
       );
+  }
+
+  @Delete()
+  @ApiOperation({
+    summary:
+      'Delete a media resource from Cloudinary by URL or publicId (administrator)',
+  })
+  async deleteMedia(
+    @Query('url') url?: string,
+    @Query('publicId') publicId?: string,
+  ) {
+    const target = url || publicId;
+    if (!target) {
+      throw new BadRequestException('Provide an image URL or publicId to delete');
+    }
+    const success = await this.storage.deleteFile(target);
+    return ApiResponseDto.ok('Media processed for deletion.', { success });
   }
 }

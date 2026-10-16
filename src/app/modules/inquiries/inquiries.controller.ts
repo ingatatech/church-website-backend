@@ -21,6 +21,7 @@ import { AdminRoleGuard } from '../auth/admin-role.guard';
 import {
   CreateInquiryDto,
   UpdateInquiryStatusDto,
+  ReplyInquiryDto,
 } from './dto/create-inquiry.dto';
 import { InquiriesService } from './inquiries.service';
 @ApiTags('Inquiries')
@@ -65,5 +66,17 @@ export class InquiriesController {
     @Body() dto: UpdateInquiryStatusDto,
   ) {
     return this.service.updateStatus(type, id, dto);
+  }
+  @Patch(':type/:id/reply')
+  @UseGuards(JwtAuthGuard, AdminRoleGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Save an admin reply for an inquiry (administrator)' })
+  @ApiOkResponse()
+  reply(
+    @Param('type') type: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ReplyInquiryDto,
+  ) {
+    return this.service.reply(type, id, dto);
   }
 }

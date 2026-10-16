@@ -37,7 +37,7 @@ describe('MinistriesService', () => {
       targetAudience: 'Young adults',
       meetingSchedule: 'Weekly',
       location: 'Church hall',
-      imageUrl: 'http://localhost:5005/uploads/youth.jpg',
+      imageUrl: 'https://res.cloudinary.com/demo/image/upload/v1/church-website/youth.jpg',
     });
 
     expect(created).toMatchObject({

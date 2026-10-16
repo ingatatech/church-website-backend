@@ -18,3 +18,9 @@ export class UpdateInquiryStatusDto {
   @IsIn(['new', 'in_progress', 'resolved'])
   status: 'new' | 'in_progress' | 'resolved';
 }
+export class ReplyInquiryDto {
+  @ApiProperty({ description: 'Reply message to send back to the submitter', maxLength: 5000 })
+  @IsString()
+  @Length(1, 5000)
+  reply: string;
+}

@@ -23,6 +23,7 @@ import { ContentRecord, ContentType } from './content.entity';
 import { CreateContentDto, UpdateContentDto } from './content.dto';
 import { slugify } from '../../../utils/slug';
 import { isCloudinaryImageUrl } from '../../../libs/storage/cloudinary-url';
+import { CloudinaryStorageService } from '../../../libs/storage/cloudinary-storage.service';
 
 type AnnouncementFilters = {
   category?: string;
@@ -60,6 +61,7 @@ export class ContentService {
     private readonly records: Repository<ContentRecord>,
     private readonly events: EventEmitter2,
     @Optional() private readonly config?: ConfigService,
+    @Optional() private readonly storage?: CloudinaryStorageService,
   ) {}
 
   async listAnnouncements(filters: AnnouncementFilters = {}) {
@@ -133,6 +135,10 @@ export class ContentService {
   async updateAnnouncement(id: string, input: UpdateAnnouncementDto) {
     const record = await this.records.findOneBy({ id, type: 'announcements' });
     if (!record) throw new NotFoundException('Announcement was not found');
+    const oldImageUrl = this.announcementImage(record);
+    if (input.imageUrl && oldImageUrl && input.imageUrl !== oldImageUrl) {
+      this.storage?.deleteFile(oldImageUrl).catch(() => null);
+    }
     const current = this.withEffectiveAnnouncementStatus(record);
     const merged = {
       title: input.title ?? record.title,
@@ -487,7 +493,24 @@ export class ContentService {
     } else {
       const { unpublish: _unpublish, ...contentUpdate } = dto;
       Object.assign(item, contentUpdate);
-      if (leaderDetails) item.details = leaderDetails;
+      if (leaderDetails) {
+        const oldLeaderImage =
+          typeof item.details?.imageUrl === 'string'
+            ? item.details.imageUrl
+            : null;
+        const newLeaderImage =
+          typeof leaderDetails.imageUrl === 'string'
+            ? leaderDetails.imageUrl
+            : null;
+        if (
+          oldLeaderImage &&
+          newLeaderImage &&
+          oldLeaderImage !== newLeaderImage
+        ) {
+          this.storage?.deleteFile(oldLeaderImage).catch(() => null);
+        }
+        item.details = leaderDetails;
+      }
       if (testimonialDetails) item.details = testimonialDetails;
       if (settingsKey && dto.published === true) {
         item.details = this.publicSettingsDetails(item.details);
@@ -514,7 +537,14 @@ export class ContentService {
       throw new BadRequestException(
         'Announcements are retained for history. Archive them instead of deleting.',
       );
+    const itemImage =
+      typeof item.details?.imageUrl === 'string'
+        ? item.details.imageUrl
+        : null;
     await this.records.remove(item);
+    if (itemImage) {
+      this.storage?.deleteFile(itemImage).catch(() => null);
+    }
     this.events.emit('content.deleted', {
       id,
       type: item.type,

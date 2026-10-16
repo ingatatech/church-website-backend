@@ -3,6 +3,7 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -13,6 +14,7 @@ import { CreateMinistryDto, UpdateMinistryDto } from './dto/ministry.dto';
 import { Ministry } from './entities/ministry.entity';
 import { slugify } from '../../../utils/slug';
 import { isCloudinaryImageUrl } from '../../../libs/storage/cloudinary-url';
+import { CloudinaryStorageService } from '../../../libs/storage/cloudinary-storage.service';
 
 type MinistryFilters = { status?: string; search?: string };
 
@@ -23,6 +25,7 @@ export class MinistriesService {
     private readonly repository: Repository<Ministry>,
     private readonly events: EventEmitter2,
     private readonly config: ConfigService,
+    @Optional() private readonly storage?: CloudinaryStorageService,
   ) {}
 
   list() {
@@ -97,8 +100,12 @@ export class MinistriesService {
     if (dto.imageUrl !== undefined && !dto.imageUrl?.trim()) {
       throw new BadRequestException('A featured ministry image is required');
     }
+    const oldImageUrl = row.imageUrl;
     if (dto.imageUrl !== undefined && dto.imageUrl !== row.imageUrl) {
       this.assertBackendImage(dto.imageUrl);
+      if (oldImageUrl && oldImageUrl !== dto.imageUrl) {
+        this.storage?.deleteFile(oldImageUrl).catch(() => null);
+      }
     }
     if (dto.slug !== undefined) {
       const slug = this.normalizeSlug(dto.slug);
@@ -118,7 +125,11 @@ export class MinistriesService {
   async remove(id: string) {
     const row = await this.repository.findOneBy({ id });
     if (!row) throw new NotFoundException('Ministry was not found');
+    const oldImageUrl = row.imageUrl;
     await this.repository.remove(row);
+    if (oldImageUrl) {
+      this.storage?.deleteFile(oldImageUrl).catch(() => null);
+    }
     this.emit('content.deleted', row);
     return { id };
   }

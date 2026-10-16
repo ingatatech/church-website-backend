@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -16,6 +17,7 @@ import {
 import { CreateSpeakerDto, UpdateSpeakerDto } from './dto/speaker.dto';
 import { PublicationStatus, Sermon } from './entities/sermon.entity';
 import { Speaker } from './entities/speaker.entity';
+import { CloudinaryStorageService } from '../../../libs/storage/cloudinary-storage.service';
 
 function detectBibleBook(scripture?: string | null): string | null {
   if (!scripture) return null;
@@ -31,6 +33,7 @@ export class SermonsService {
     @InjectRepository(Speaker)
     private readonly speakerRepository: Repository<Speaker>,
     private readonly pubsub: RedisPubSubService,
+    @Optional() private readonly storage?: CloudinaryStorageService,
   ) {}
 
   // ==========================================
@@ -388,7 +391,13 @@ export class SermonsService {
       sermon.ministry = dto.ministry?.trim() || null;
     if (dto.service !== undefined) sermon.service = dto.service?.trim() || null;
     if (dto.description !== undefined) sermon.description = dto.description;
-    if (dto.thumbnailUrl !== undefined) sermon.thumbnailUrl = dto.thumbnailUrl;
+    if (dto.thumbnailUrl !== undefined) {
+      const oldThumbnail = sermon.thumbnailUrl;
+      if (oldThumbnail && oldThumbnail !== dto.thumbnailUrl) {
+        this.storage?.deleteFile(oldThumbnail).catch(() => null);
+      }
+      sermon.thumbnailUrl = dto.thumbnailUrl;
+    }
     if (dto.audioUrl !== undefined) sermon.audioUrl = dto.audioUrl;
     if (dto.videoUrl !== undefined) sermon.videoUrl = dto.videoUrl;
     if (dto.allowDownload !== undefined)
@@ -418,7 +427,11 @@ export class SermonsService {
   async remove(id: string) {
     const sermon = await this.sermonRepository.findOneBy({ id });
     if (!sermon) throw new NotFoundException('Sermon was not found');
+    const oldThumbnail = sermon.thumbnailUrl;
     await this.sermonRepository.remove(sermon);
+    if (oldThumbnail) {
+      this.storage?.deleteFile(oldThumbnail).catch(() => null);
+    }
     return { id, message: 'Sermon removed successfully' };
   }
 
@@ -514,8 +527,14 @@ export class SermonsService {
     if (dto.name !== undefined) speaker.name = dto.name.trim();
     if (dto.title !== undefined) speaker.title = dto.title?.trim() || null;
     if (dto.bio !== undefined) speaker.bio = dto.bio?.trim() || null;
-    if (dto.photoUrl !== undefined)
-      speaker.photoUrl = dto.photoUrl?.trim() || null;
+    if (dto.photoUrl !== undefined) {
+      const oldPhoto = speaker.photoUrl;
+      const newPhoto = dto.photoUrl?.trim() || null;
+      if (oldPhoto && newPhoto !== oldPhoto) {
+        this.storage?.deleteFile(oldPhoto).catch(() => null);
+      }
+      speaker.photoUrl = newPhoto;
+    }
     if (dto.email !== undefined) speaker.email = dto.email?.trim() || null;
     if (dto.phone !== undefined) speaker.phone = dto.phone?.trim() || null;
     if (dto.socialLinks !== undefined)
@@ -537,8 +556,12 @@ export class SermonsService {
   async removeSpeaker(id: string) {
     const speaker = await this.speakerRepository.findOneBy({ id });
     if (!speaker) throw new NotFoundException('Speaker was not found');
+    const oldPhoto = speaker.photoUrl;
     // sermons will have speakerId set to null via foreign key ON DELETE SET NULL, but retain speaker text
     await this.speakerRepository.remove(speaker);
+    if (oldPhoto) {
+      this.storage?.deleteFile(oldPhoto).catch(() => null);
+    }
     return { id, message: 'Speaker deleted successfully' };
   }
 
