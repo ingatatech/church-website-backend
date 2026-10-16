@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { RedisPubSubService } from '../../../libs/pubsub/redis-pubsub.service';
@@ -6,16 +6,27 @@ import { DOMAIN_EVENTS } from '../../../utils/constants/events';
 import { PublicationStatus } from '../sermons/entities/sermon.entity';
 import { CreateEventDto, UpdateEventDto } from './dto/event.dto';
 import { ChurchEvent } from './entities/church-event.entity';
+import { CloudinaryStorageService } from '../../../libs/storage/cloudinary-storage.service';
+
 @Injectable()
 export class EventsService {
   constructor(
     @InjectRepository(ChurchEvent)
     private readonly repository: Repository<ChurchEvent>,
     private readonly pubsub: RedisPubSubService,
+    @Optional() private readonly storage?: CloudinaryStorageService,
   ) {}
   list() {
+    return this.repository
+      .createQueryBuilder('event')
+      .where('event.status = :status', { status: PublicationStatus.PUBLISHED })
+      .andWhere('event.date >= CURRENT_DATE')
+      .orderBy('event.date', 'ASC')
+      .addOrderBy('event.time', 'ASC')
+      .getMany();
+  }
+  listForAdministration() {
     return this.repository.find({
-      where: { status: PublicationStatus.PUBLISHED },
       order: { date: 'ASC', time: 'ASC' },
     });
   }
@@ -37,13 +48,25 @@ export class EventsService {
   async update(id: string, dto: UpdateEventDto) {
     const row = await this.repository.findOneBy({ id });
     if (!row) throw new NotFoundException('Event was not found');
+    const oldFlyerUrl = row.flyerUrl;
+    if (
+      dto.flyerUrl !== undefined &&
+      oldFlyerUrl &&
+      dto.flyerUrl !== oldFlyerUrl
+    ) {
+      this.storage?.deleteFile(oldFlyerUrl).catch(() => null);
+    }
     Object.assign(row, dto);
     return this.repository.save(row);
   }
   async remove(id: string) {
     const row = await this.repository.findOneBy({ id });
     if (!row) throw new NotFoundException('Event was not found');
+    const oldFlyerUrl = row.flyerUrl;
     await this.repository.remove(row);
+    if (oldFlyerUrl) {
+      this.storage?.deleteFile(oldFlyerUrl).catch(() => null);
+    }
     return { id };
   }
 }

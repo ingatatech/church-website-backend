@@ -14,6 +14,7 @@ import { InquiryRecord } from './entities/inquiry.entity';
 import {
   CreateInquiryDto,
   UpdateInquiryStatusDto,
+  ReplyInquiryDto,
 } from './dto/create-inquiry.dto';
 @Injectable()
 export class InquiriesService {
@@ -27,21 +28,13 @@ export class InquiriesService {
     private readonly pubsub: RedisPubSubService,
   ) {}
   async contact(dto: CreateInquiryDto) {
-    return this.save(
-      this.contacts as Repository<InquiryRecord>,
-      'contact',
-      dto,
-    );
+    return this.save(this.contacts, 'contact', dto);
   }
   async visitor(dto: CreateInquiryDto) {
-    return this.save(
-      this.visitors as Repository<InquiryRecord>,
-      'visitor',
-      dto,
-    );
+    return this.save(this.visitors, 'visitor', dto);
   }
   async prayer(dto: CreateInquiryDto) {
-    return this.save(this.prayers as Repository<InquiryRecord>, 'prayer', dto);
+    return this.save(this.prayers, 'prayer', dto);
   }
   list(type: string) {
     return this.repositoryFor(type).find({ order: { createdAt: 'DESC' } });
@@ -52,6 +45,23 @@ export class InquiriesService {
     if (!row) throw new NotFoundException('Inquiry was not found');
     row.status = dto.status;
     return repository.save(row);
+  }
+  async reply(type: string, id: string, dto: ReplyInquiryDto) {
+    const repository = this.repositoryFor(type);
+    const row = await repository.findOneBy({ id });
+    if (!row) throw new NotFoundException('Inquiry was not found');
+    row.reply = dto.reply;
+    row.repliedAt = new Date();
+    // Auto-advance status from 'new' to 'in_progress' when a reply is saved
+    if (row.status === 'new') row.status = 'in_progress';
+    const saved = await repository.save(row);
+    // Publish reply event for downstream email delivery
+    await this.pubsub.publish(DOMAIN_EVENTS.INQUIRY_RECEIVED, {
+      id: saved.id,
+      type,
+      event: 'reply',
+    });
+    return { id: saved.id, status: saved.status, repliedAt: saved.repliedAt };
   }
   private async save(
     repository: Repository<InquiryRecord>,
@@ -67,9 +77,9 @@ export class InquiriesService {
     return { id: row.id, status: 'received' };
   }
   private repositoryFor(type: string): Repository<InquiryRecord> {
-    if (type === 'contact') return this.contacts as Repository<InquiryRecord>;
-    if (type === 'visitor') return this.visitors as Repository<InquiryRecord>;
-    if (type === 'prayer') return this.prayers as Repository<InquiryRecord>;
+    if (type === 'contact') return this.contacts;
+    if (type === 'visitor') return this.visitors;
+    if (type === 'prayer') return this.prayers;
     throw new BadRequestException(
       'Inquiry type must be contact, visitor, or prayer',
     );

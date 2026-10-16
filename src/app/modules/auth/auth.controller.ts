@@ -29,10 +29,7 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
-import {
-  clearTokenCookies,
-  setTokenCookies,
-} from './helpers/cookie.helper';
+import { clearTokenCookies, setTokenCookies } from './helpers/cookie.helper';
 import { sendResult } from '../../../helpers/message/sendResult';
 
 @ApiTags('Auth')
@@ -175,11 +172,18 @@ export class AuthController {
   @Post('forgot-password/verify-otp')
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 5, ttl: 60000 } })
-  @ApiOperation({ summary: 'Verify OTP for password reset — returns resetToken' })
+  @ApiOperation({
+    summary: 'Verify OTP for password reset — returns resetToken',
+  })
   @ApiResponse({ status: 200, description: 'OTP verified, resetToken issued' })
   async forgotPasswordVerifyOtp(@Body() dto: VerifyOtpDto) {
-    const result = await this.authService.forgotPasswordConfirmOtp(dto.requestId, dto.otp);
-    return sendResult(HttpStatus.OK, result!.message, { resetToken: result!.resetToken });
+    const result = await this.authService.forgotPasswordConfirmOtp(
+      dto.requestId,
+      dto.otp,
+    );
+    return sendResult(HttpStatus.OK, result!.message, {
+      resetToken: result!.resetToken,
+    });
   }
 
   @Post('reset-password')

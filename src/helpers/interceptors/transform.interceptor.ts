@@ -24,7 +24,7 @@ export class TransformInterceptor implements NestInterceptor {
             ? (result as { data: unknown }).data
             : result,
         ...(result && typeof result === 'object' && 'message' in result
-          ? { message: (result as { message: unknown }).message }
+          ? { message: result.message }
           : {}),
         timestamp: new Date().toISOString(),
       })),

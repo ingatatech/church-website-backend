@@ -5,7 +5,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { AuthProvider, UserStatus } from '../../../../utils/enums';
+import { AuthProvider, UserRole, UserStatus } from '../../../../utils/enums';
 
 @Entity('users')
 export class User {
@@ -33,6 +33,13 @@ export class User {
     default: UserStatus.pending,
   })
   status: UserStatus;
+
+  @Column({
+    type: 'enum',
+    enum: UserRole,
+    default: UserRole.member,
+  })
+  role: UserRole;
 
   @Column({
     type: 'enum',

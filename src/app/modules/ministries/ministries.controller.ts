@@ -17,6 +17,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AdminRoleGuard } from '../auth/admin-role.guard';
 import { CreateMinistryDto, UpdateMinistryDto } from './dto/ministry.dto';
 import { MinistriesService } from './ministries.service';
 @ApiTags('Ministries')
@@ -30,21 +31,24 @@ export class MinistriesController {
     return this.service.list();
   }
   @Get(':id')
-  @ApiOperation({ summary: 'Get a published ministry by ID' })
+  @ApiOperation({ summary: 'Get a published ministry by ID or slug' })
   @ApiOkResponse()
-  get(@Param('id', ParseUUIDPipe) id: string) {
+  get(@Param('id') id: string) {
     return this.service.get(id);
   }
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AdminRoleGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Create a ministry (administrator)' })
+  @ApiOperation({
+    summary: 'Create a ministry (administrator)',
+    description: 'The ministry URL slug is generated from its name.',
+  })
   @ApiCreatedResponse()
   create(@Body() dto: CreateMinistryDto) {
     return this.service.create(dto);
   }
   @Patch(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AdminRoleGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update a ministry (administrator)' })
   @ApiOkResponse()
@@ -55,7 +59,7 @@ export class MinistriesController {
     return this.service.update(id, dto);
   }
   @Delete(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AdminRoleGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete a ministry (administrator)' })
   @ApiOkResponse()

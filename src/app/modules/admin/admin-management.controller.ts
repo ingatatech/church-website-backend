@@ -1,15 +1,16 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Repository } from 'typeorm';
 import { ChurchEvent } from '../events/entities/church-event.entity';
 import { Ministry } from '../ministries/entities/ministry.entity';
 import { Sermon } from '../sermons/entities/sermon.entity';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AdminRoleGuard } from '../auth/admin-role.guard';
 
 @ApiTags('Admin management')
 @ApiBearerAuth()
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(JwtAuthGuard, AdminRoleGuard)
 @Controller('admin')
 export class AdminManagementController {
   constructor(

@@ -12,6 +12,7 @@ import { TransformInterceptor } from './helpers/interceptors/transform.intercept
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
+  app.enableShutdownHooks();
   const config = app.get(ConfigService);
   app.use(helmet());
   const corsOrigins = (config.get<string>('CORS_ORIGINS') ?? '')
@@ -22,23 +23,30 @@ async function bootstrap() {
     origin: corsOrigins.length ? corsOrigins : false,
     credentials: true,
   });
-  app.use((req: express.Request, _res: express.Response, next: express.NextFunction) => {
-    const cookies: Record<string, string> = {};
-    for (const part of (req.headers.cookie ?? '').split(';')) {
-      const separator = part.indexOf('=');
-      if (separator < 0) continue;
-      const name = part.slice(0, separator).trim();
-      const value = part.slice(separator + 1).trim();
-      if (!name) continue;
-      try {
-        cookies[name] = decodeURIComponent(value);
-      } catch {
-        cookies[name] = value;
+  app.use(
+    (
+      req: express.Request,
+      _res: express.Response,
+      next: express.NextFunction,
+    ) => {
+      const cookies: Record<string, string> = {};
+      for (const part of (req.headers.cookie ?? '').split(';')) {
+        const separator = part.indexOf('=');
+        if (separator < 0) continue;
+        const name = part.slice(0, separator).trim();
+        const value = part.slice(separator + 1).trim();
+        if (!name) continue;
+        try {
+          cookies[name] = decodeURIComponent(value);
+        } catch {
+          cookies[name] = value;
+        }
       }
-    }
-    (req as express.Request & { cookies: Record<string, string> }).cookies = cookies;
-    next();
-  });
+      (req as express.Request & { cookies: Record<string, string> }).cookies =
+        cookies;
+      next();
+    },
+  );
   app.setGlobalPrefix('api');
   app.useGlobalFilters(new HttpExceptionFilter());
   app.useGlobalInterceptors(new TransformInterceptor());

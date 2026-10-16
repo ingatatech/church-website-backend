@@ -27,13 +27,11 @@ export class HttpExceptionFilter implements ExceptionFilter {
         : Array.isArray((payload as any).message)
           ? (payload as any).message.join(', ')
           : ((payload as any).message ?? 'Request failed');
-    response
-      .status(status)
-      .json({
-        success: false,
-        statusCode: status,
-        error: message,
-        timestamp: new Date().toISOString(),
-      });
+    response.status(status).json({
+      success: false,
+      statusCode: status,
+      error: message,
+      timestamp: new Date().toISOString(),
+    });
   }
 }

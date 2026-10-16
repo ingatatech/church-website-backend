@@ -19,8 +19,11 @@ export class JwtTokenService {
   ) {}
 
   async generateTokenPair(payload: TokenPayload) {
-    const secret = this.config.get<string>('JWT_SECRET', 'secret-key-change-me-in-production');
-    
+    const secret = this.config.get<string>(
+      'JWT_SECRET',
+      'secret-key-change-me-in-production',
+    );
+
     const accessTokenExpiresIn = '1h';
     const refreshTokenExpiresIn = '7d';
 
@@ -45,7 +48,10 @@ export class JwtTokenService {
     await this.redis.set(`refresh_token:${userId}`, hashed, 30 * 24 * 3600);
   }
 
-  async validateRefreshToken(userId: string, refreshToken: string): Promise<boolean> {
+  async validateRefreshToken(
+    userId: string,
+    refreshToken: string,
+  ): Promise<boolean> {
     const storedHashed = await this.redis.get(`refresh_token:${userId}`);
     if (!storedHashed) return false;
     return bcrypt.compare(refreshToken, storedHashed);
