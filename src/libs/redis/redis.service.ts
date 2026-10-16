@@ -25,7 +25,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   private upstashToken: string | null = null;
 
   // ioredis TCP (lazy-loaded only when Upstash is not configured)
-  private ioClient: import('ioredis').default | null = null;
+  private ioClient: import('ioredis').Redis | null = null;
 
   // In-memory fallback
   private readonly memoryStore = new Map<
@@ -47,12 +47,12 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     }
 
     // Fall back to ioredis TCP
-    const { default: Redis } = await import('ioredis');
+    const { Redis } = await import('ioredis');
     const host = this.config.get<string>('REDIS_HOST', 'localhost');
     const port = this.config.get<number>('REDIS_PORT', 6379);
     const password = this.config.get<string>('REDIS_PASSWORD') || undefined;
 
-    this.ioClient = new Redis({
+    const client = new Redis({
       host,
       port,
       password,
@@ -62,13 +62,14 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       enableOfflineQueue: false,
       maxRetriesPerRequest: 1,
     });
+    this.ioClient = client;
 
-    this.ioClient.on('error', (err) => {
+    client.on('error', (err) => {
       this.logger.warn(`Redis client error: ${err.message}`);
     });
 
     try {
-      await this.ioClient.connect();
+      await client.connect();
       this.logger.log('RedisService: connected via TCP');
     } catch {
       this.logger.warn(
