@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { RedisService } from '../redis/redis.service';
+import { MemoryStoreService } from '../cache/memory-store.service';
 
 export interface TokenPayload {
   sub: string;
@@ -15,7 +15,7 @@ export class JwtTokenService {
   constructor(
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
-    private readonly redis: RedisService,
+    private readonly store: MemoryStoreService,
   ) {}
 
   async generateTokenPair(payload: TokenPayload) {
@@ -45,19 +45,19 @@ export class JwtTokenService {
 
   async storeRefreshToken(userId: string, refreshToken: string): Promise<void> {
     const hashed = await bcrypt.hash(refreshToken, 10);
-    await this.redis.set(`refresh_token:${userId}`, hashed, 30 * 24 * 3600);
+    await this.store.set(`refresh_token:${userId}`, hashed, 30 * 24 * 3600);
   }
 
   async validateRefreshToken(
     userId: string,
     refreshToken: string,
   ): Promise<boolean> {
-    const storedHashed = await this.redis.get(`refresh_token:${userId}`);
+    const storedHashed = await this.store.get(`refresh_token:${userId}`);
     if (!storedHashed) return false;
     return bcrypt.compare(refreshToken, storedHashed);
   }
 
   async revokeRefreshToken(userId: string): Promise<void> {
-    await this.redis.del(`refresh_token:${userId}`);
+    await this.store.del(`refresh_token:${userId}`);
   }
 }

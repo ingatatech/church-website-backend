@@ -9,7 +9,7 @@ import { JwtTokenService } from '../../../libs/jwt/jwt-token.service';
 import { OtpService } from '../../../libs/otp/otp.service';
 import { EmailPublisher } from '../../../libs/pubsub/publishers/email.publisher';
 import { VerificationOtpEmailService } from '../../../libs/pubsub/services/verification-otp-email.service';
-import { RedisService } from '../../../libs/redis/redis.service';
+import { MemoryStoreService } from '../../../libs/cache/memory-store.service';
 import { I18nService } from '../../../libs/i18n/i18n.service';
 import { sendError } from '../../../helpers/message/sendResult';
 import { LoginDto } from './dto/login.dto';
@@ -30,7 +30,7 @@ export class AuthService {
     private readonly otpService: OtpService,
     private readonly emailPublisher: EmailPublisher,
     private readonly verificationOtpEmail: VerificationOtpEmailService,
-    private readonly redisService: RedisService,
+    private readonly memoryStore: MemoryStoreService,
     private readonly i18n: I18nService,
   ) {}
 
@@ -60,7 +60,7 @@ export class AuthService {
       email: dto.email,
       acceptTerms: dto.acceptTerms,
     };
-    await this.redisService.set(
+    await this.memoryStore.set(
       this.pendingRegKey(requestId),
       JSON.stringify(pending),
       this.PENDING_REG_TTL,
@@ -82,7 +82,7 @@ export class AuthService {
   }
 
   async verifyOtp(dto: VerifyOtpDto) {
-    const pendingData = await this.redisService.get(
+    const pendingData = await this.memoryStore.get(
       this.pendingRegKey(dto.requestId),
     );
     if (!pendingData) {
@@ -102,7 +102,7 @@ export class AuthService {
         : pendingData;
 
     const user = await this.usersService.createPendingUser(pending);
-    await this.redisService.del(this.pendingRegKey(dto.requestId));
+    await this.memoryStore.del(this.pendingRegKey(dto.requestId));
 
     void this.auditLogService.log({
       userId: user.id,
@@ -277,7 +277,7 @@ export class AuthService {
     }
 
     const requestId = randomUUID();
-    await this.redisService.set(
+    await this.memoryStore.set(
       this.resetPasswordKey(requestId),
       user.id,
       this.PENDING_REG_TTL,
@@ -296,7 +296,7 @@ export class AuthService {
   }
 
   async forgotPasswordConfirmOtp(requestId: string, otp: string) {
-    const storedUserId = await this.redisService.get(
+    const storedUserId = await this.memoryStore.get(
       this.resetPasswordKey(requestId),
     );
     if (!storedUserId) {
@@ -309,10 +309,10 @@ export class AuthService {
     }
 
     await this.otpService.verify(requestId, otp);
-    await this.redisService.del(this.resetPasswordKey(requestId));
+    await this.memoryStore.del(this.resetPasswordKey(requestId));
 
     const resetToken = randomUUID();
-    await this.redisService.set(
+    await this.memoryStore.set(
       this.resetTokenKey(resetToken),
       storedUserId,
       this.RESET_TOKEN_TTL,
@@ -337,7 +337,7 @@ export class AuthService {
       );
     }
 
-    const storedUserId = await this.redisService.get(
+    const storedUserId = await this.memoryStore.get(
       this.resetTokenKey(resetToken),
     );
     if (!storedUserId) {
@@ -353,7 +353,7 @@ export class AuthService {
     const user = await this.usersService.update(storedUserId, {
       password: hashed,
     });
-    await this.redisService.del(this.resetTokenKey(resetToken));
+    await this.memoryStore.del(this.resetTokenKey(resetToken));
 
     if (user.email) {
       this.emailPublisher
@@ -379,7 +379,7 @@ export class AuthService {
   private async loadPendingRegistration(
     requestId: string,
   ): Promise<PendingRegistration | null> {
-    const data = await this.redisService.get(this.pendingRegKey(requestId));
+    const data = await this.memoryStore.get(this.pendingRegKey(requestId));
     if (!data) {
       sendError(
         HttpStatus.BAD_REQUEST,

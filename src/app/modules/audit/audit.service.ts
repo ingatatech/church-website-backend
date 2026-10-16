@@ -2,14 +2,14 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { DOMAIN_EVENTS } from '../../../utils/constants/events';
-import { RedisPubSubService } from '../../../libs/pubsub/redis-pubsub.service';
+import { DomainEventService } from '../../../libs/pubsub/domain-event.service';
 import { AuditLog } from './entities/audit-log.entity';
 
 @Injectable()
 export class AuditService implements OnModuleInit {
   constructor(
     @InjectRepository(AuditLog) private readonly logs: Repository<AuditLog>,
-    private readonly pubsub: RedisPubSubService,
+    private readonly pubsub: DomainEventService,
   ) {}
   async onModuleInit() {
     await this.pubsub.subscribe(

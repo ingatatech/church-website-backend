@@ -1,6 +1,6 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { html, Mailer } from '@nestjs/mail';
-import { RedisPubSubService } from '../redis-pubsub.service';
+import { DomainEventService } from '../domain-event.service';
 import { DOMAIN_EVENTS } from '../../../utils/constants/events';
 
 @Injectable()
@@ -8,7 +8,7 @@ export class EmailPublisher {
   private readonly logger = new Logger(EmailPublisher.name);
 
   constructor(
-    private readonly pubsub: RedisPubSubService,
+    private readonly pubsub: DomainEventService,
     @Optional() private readonly mailer?: Mailer,
   ) {}
 

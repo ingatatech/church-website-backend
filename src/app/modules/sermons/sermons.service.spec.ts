@@ -5,7 +5,7 @@ jest.mock('@nestjs/typeorm', () => ({
   InjectRepository: () => () => undefined,
 }));
 
-import type { RedisPubSubService } from '../../../libs/pubsub/redis-pubsub.service';
+import type { DomainEventService } from '../../../libs/pubsub/domain-event.service';
 import { PublicationStatus, Sermon } from './entities/sermon.entity';
 import { Speaker } from './entities/speaker.entity';
 import { SermonsService } from './sermons.service';
@@ -14,7 +14,7 @@ describe('SermonsService', () => {
   let service: SermonsService;
   let sermonRepo: Partial<Repository<Sermon>>;
   let speakerRepo: Partial<Repository<Speaker>>;
-  let pubsub: Partial<RedisPubSubService>;
+  let pubsub: Partial<DomainEventService>;
 
   beforeEach(() => {
     sermonRepo = {
@@ -57,7 +57,7 @@ describe('SermonsService', () => {
     service = new SermonsService(
       sermonRepo as Repository<Sermon>,
       speakerRepo as Repository<Speaker>,
-      pubsub as RedisPubSubService,
+      pubsub as DomainEventService,
     );
   });
 

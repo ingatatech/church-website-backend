@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { RedisPubSubService } from '../../../libs/pubsub/redis-pubsub.service';
+import { DomainEventService } from '../../../libs/pubsub/domain-event.service';
 import { DOMAIN_EVENTS } from '../../../utils/constants/events';
 import { ContactInquiry } from './entities/contact-inquiry.entity';
 import { PrayerRequest } from './entities/prayer-request.entity';
@@ -25,7 +25,7 @@ export class InquiriesService {
     private readonly visitors: Repository<VisitorInquiry>,
     @InjectRepository(PrayerRequest)
     private readonly prayers: Repository<PrayerRequest>,
-    private readonly pubsub: RedisPubSubService,
+    private readonly pubsub: DomainEventService,
   ) {}
   async contact(dto: CreateInquiryDto) {
     return this.save(this.contacts, 'contact', dto);

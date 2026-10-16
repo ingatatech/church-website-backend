@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { RedisPubSubService } from '../../../libs/pubsub/redis-pubsub.service';
+import { DomainEventService } from '../../../libs/pubsub/domain-event.service';
 import { DOMAIN_EVENTS } from '../../../utils/constants/events';
 import { slugify } from '../../../utils/slug';
 import {
@@ -32,7 +32,7 @@ export class SermonsService {
     private readonly sermonRepository: Repository<Sermon>,
     @InjectRepository(Speaker)
     private readonly speakerRepository: Repository<Speaker>,
-    private readonly pubsub: RedisPubSubService,
+    private readonly pubsub: DomainEventService,
     @Optional() private readonly storage?: CloudinaryStorageService,
   ) {}
 

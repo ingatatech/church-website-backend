@@ -17,7 +17,7 @@ import { AddNestOutboxSchema1791250000000 } from '../database/migrations/1791250
 import { PubSubModule } from '../libs/pubsub/pubsub.module';
 import { CacheModule } from '../libs/cache/cache.module';
 import { StorageModule } from '../libs/storage/storage.module';
-import { RedisModule } from '../libs/redis/redis.module';
+import { MemoryStoreModule } from '../libs/cache/memory-store.module';
 import { OtpModule } from '../libs/otp/otp.module';
 import { JwtTokenModule } from '../libs/jwt/jwt-token.module';
 import { I18nModule } from '../libs/i18n/i18n.module';
@@ -66,7 +66,7 @@ import { DomainEventsSubscriber } from '../libs/pubsub/domain-events.subscriber'
       },
     }),
     PubSubModule,
-    RedisModule,
+    MemoryStoreModule,
     OtpModule,
     JwtTokenModule,
     I18nModule,

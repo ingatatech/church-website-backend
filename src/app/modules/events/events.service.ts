@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { RedisPubSubService } from '../../../libs/pubsub/redis-pubsub.service';
+import { DomainEventService } from '../../../libs/pubsub/domain-event.service';
 import { DOMAIN_EVENTS } from '../../../utils/constants/events';
 import { PublicationStatus } from '../sermons/entities/sermon.entity';
 import { CreateEventDto, UpdateEventDto } from './dto/event.dto';
@@ -13,7 +13,7 @@ export class EventsService {
   constructor(
     @InjectRepository(ChurchEvent)
     private readonly repository: Repository<ChurchEvent>,
-    private readonly pubsub: RedisPubSubService,
+    private readonly pubsub: DomainEventService,
     @Optional() private readonly storage?: CloudinaryStorageService,
   ) {}
   list() {
