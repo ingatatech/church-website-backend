@@ -992,7 +992,10 @@ export class ContentService {
       this.config?.get<string>('CLOUDINARY_URL'),
       this.config?.get<string>('CLOUDINARY_DELIVERY_HOST'),
     );
-    if (!cloudinary) throw new BadRequestException(`${label} must be uploaded to Cloudinary through the backend media service`);
+    if (!cloudinary) {
+      if (url.hostname.includes('unsplash.com')) return;
+      throw new BadRequestException(`${label} must be uploaded to Cloudinary through the backend media service`);
+    }
   }
 
   private validateLinkSetting(value: unknown, label: string) {
@@ -1026,6 +1029,7 @@ export class ContentService {
       this.config?.get<string>('CLOUDINARY_URL'),
       this.config?.get<string>('CLOUDINARY_DELIVERY_HOST'),
     )) {
+      if (image.hostname.includes('unsplash.com')) return;
       throw new BadRequestException(
         'Announcement images must be uploaded through the church media library.',
       );

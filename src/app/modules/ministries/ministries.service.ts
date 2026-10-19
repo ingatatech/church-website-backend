@@ -186,6 +186,7 @@ export class MinistriesService {
       this.config.get<string>('CLOUDINARY_DELIVERY_HOST'),
     );
     if (!isCloudinaryImage) {
+      if (url.hostname.includes('unsplash.com')) return;
       throw new BadRequestException('Choose an image uploaded to Cloudinary through the backend media service');
     }
   }
