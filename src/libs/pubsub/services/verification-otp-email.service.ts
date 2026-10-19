@@ -1,4 +1,4 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { BadGatewayException, ConflictException, Injectable, Logger } from '@nestjs/common';
 import { html, Mailer } from '@nestjs/mail';
 import { OtpService } from '../../otp/otp.service';
 
@@ -10,6 +10,8 @@ interface VerificationOtpPayload {
 
 @Injectable()
 export class VerificationOtpEmailService {
+  private readonly logger = new Logger(VerificationOtpEmailService.name);
+
   constructor(
     private readonly mailer: Mailer,
     private readonly otpService: OtpService,
@@ -26,11 +28,12 @@ export class VerificationOtpEmailService {
       );
     }
 
-    await this.mailer.send({
-      to: email,
-      subject: 'Your Church Portal verification code',
-      text: `Your email verification code is ${otp}. It expires in 10 minutes. If you did not request this code, you can ignore this email.`,
-      html: html`<!doctype html>
+    try {
+      await this.mailer.send({
+        to: email,
+        subject: 'Your Church Portal verification code',
+        text: `Your email verification code is ${otp}. It expires in 10 minutes. If you did not request this code, you can ignore this email.`,
+        html: html`<!doctype html>
         <html lang="en">
           <body
             style="margin:0;background:#f8f7f4;padding:32px 12px;font-family:Arial,sans-serif;color:#142852"
@@ -61,6 +64,16 @@ export class VerificationOtpEmailService {
             </main>
           </body>
         </html>`,
-    });
+      });
+      this.logger.log(`Verification code successfully delivered to ${email}`);
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to deliver verification code to ${email}: ${error?.message || error}`,
+        error?.stack,
+      );
+      throw new BadGatewayException(
+        `Failed to deliver verification email: ${error?.message || 'Check email service configuration'}`,
+      );
+    }
   }
 }

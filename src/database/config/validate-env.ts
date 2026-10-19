@@ -12,10 +12,11 @@ export interface Environment {
   POSTGRES_DB: string;
   JWT_SECRET: string;
   JWT_EXPIRES_IN: string;
-  MAIL_TRANSPORT: 'file' | 'smtp';
+  MAIL_TRANSPORT: 'file' | 'smtp' | 'resend';
   MAIL_FROM?: string;
   MAIL_DIRECTORY: string;
   SMTP_URL?: string;
+  RESEND_API_KEY?: string;
 }
 export function validateEnvironment(
   values: Record<string, unknown>,
@@ -45,20 +46,38 @@ export function validateEnvironment(
     throw new Error('Configure DATABASE_URL or POSTGRES_DB in the environment');
   if (!values.CLOUDINARY_URL)
     throw new Error('Configure CLOUDINARY_URL for required Cloudinary media storage');
+  const resendApiKey = values.RESEND_API_KEY
+    ? String(values.RESEND_API_KEY).trim()
+    : undefined;
   const mailTransport = String(
-    values.MAIL_TRANSPORT ?? (environment === 'production' ? 'smtp' : 'file'),
+    values.MAIL_TRANSPORT ??
+      (resendApiKey
+        ? 'resend'
+        : environment === 'production'
+          ? 'smtp'
+          : 'file'),
   );
-  if (mailTransport !== 'file' && mailTransport !== 'smtp')
-    throw new Error('MAIL_TRANSPORT must be either "file" or "smtp"');
+  if (
+    mailTransport !== 'file' &&
+    mailTransport !== 'smtp' &&
+    mailTransport !== 'resend'
+  )
+    throw new Error('MAIL_TRANSPORT must be either "file", "smtp", or "resend"');
   const smtpUrl = values.SMTP_URL ? String(values.SMTP_URL).trim() : undefined;
   const mailFrom = values.MAIL_FROM ? String(values.MAIL_FROM).trim() : undefined;
+  if (mailTransport === 'resend' && !resendApiKey)
+    throw new Error('Configure RESEND_API_KEY when MAIL_TRANSPORT=resend');
   if (mailTransport === 'smtp' && !smtpUrl)
     throw new Error('Configure SMTP_URL when MAIL_TRANSPORT=smtp');
   if (mailTransport === 'smtp' && !mailFrom)
     throw new Error('Configure MAIL_FROM when MAIL_TRANSPORT=smtp');
-  if (environment === 'production' && mailTransport !== 'smtp')
-    throw new Error('Production must use MAIL_TRANSPORT=smtp');
-  if (environment === 'production' && !mailFrom)
+  if (
+    environment === 'production' &&
+    mailTransport !== 'smtp' &&
+    mailTransport !== 'resend'
+  )
+    throw new Error('Production must use MAIL_TRANSPORT=resend or MAIL_TRANSPORT=smtp');
+  if (environment === 'production' && !mailFrom && mailTransport !== 'resend')
     throw new Error('Configure MAIL_FROM in production');
   return {
     NODE_ENV: environment,
@@ -76,9 +95,14 @@ export function validateEnvironment(
     POSTGRES_DB: String(values.POSTGRES_DB ?? ''),
     JWT_SECRET: secret,
     JWT_EXPIRES_IN: String(values.JWT_EXPIRES_IN ?? '1h'),
-    MAIL_TRANSPORT: mailTransport,
-    MAIL_FROM: mailFrom,
+    MAIL_TRANSPORT: mailTransport as 'file' | 'smtp' | 'resend',
+    MAIL_FROM:
+      mailFrom ??
+      (mailTransport === 'resend'
+        ? 'Church Portal <onboarding@resend.dev>'
+        : undefined),
     MAIL_DIRECTORY: String(values.MAIL_DIRECTORY ?? 'var/mail'),
     SMTP_URL: smtpUrl,
+    RESEND_API_KEY: resendApiKey,
   };
 }

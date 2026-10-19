@@ -4,7 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { EventEmitterModule } from '@nestjs/event-emitter';
-import { MailModule, FileMailTransport, SmtpTransport } from '@nestjs/mail';
+import { MailModule, FileMailTransport, SmtpTransport, ResendTransport } from '@nestjs/mail';
 import { validateEnvironment } from '../database/config/validate-env';
 import { InitialChurchSchema1760000000000 } from '../database/migrations/1760000000000-InitialChurchSchema';
 import { DropRoleColumns1791190000000 } from '../database/migrations/1791190000000-DropRoleColumns';
@@ -40,26 +40,33 @@ import { DomainEventsSubscriber } from '../libs/pubsub/domain-events.subscriber'
     MailModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
-        const transport =
-          config.get<string>('MAIL_TRANSPORT') === 'smtp'
-            ? new SmtpTransport({
-                url: config.getOrThrow<string>('SMTP_URL'),
-                pool: true,
-                timeouts: {
-                  connect: '8s',
-                  greeting: '8s',
-                  command: '8s',
-                  data: '30s',
-                },
-              })
-            : new FileMailTransport({
-                directory: config.get<string>('MAIL_DIRECTORY', 'var/mail'),
-              });
+        const mailTransport = config.get<string>('MAIL_TRANSPORT');
+        let transport;
+        if (mailTransport === 'resend') {
+          transport = new ResendTransport({
+            apiKey: config.getOrThrow<string>('RESEND_API_KEY'),
+          });
+        } else if (mailTransport === 'smtp') {
+          transport = new SmtpTransport({
+            url: config.getOrThrow<string>('SMTP_URL'),
+            pool: true,
+            timeouts: {
+              connect: '8s',
+              greeting: '8s',
+              command: '8s',
+              data: '30s',
+            },
+          });
+        } else {
+          transport = new FileMailTransport({
+            directory: config.get<string>('MAIL_DIRECTORY', 'var/mail'),
+          });
+        }
         return {
           transport,
           from: config.get<string>(
             'MAIL_FROM',
-            'Church Website <no-reply@example.com>',
+            'Church Portal <onboarding@resend.dev>',
           ),
           retry: false,
         };
