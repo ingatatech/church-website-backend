@@ -283,9 +283,7 @@ export class AuthService {
       this.PENDING_REG_TTL,
     );
     const otp = await this.otpService.generate(requestId);
-    await this.emailPublisher
-      .publishPasswordResetEmail(user.email, otp)
-      .catch(() => undefined);
+    await this.emailPublisher.publishPasswordResetEmail(user.email, otp);
 
     return {
       message: this.i18n.t('auth.code_sent_email'),

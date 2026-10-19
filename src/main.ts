@@ -76,12 +76,12 @@ async function bootstrap() {
   );
   const port = Number(process.env.PORT ?? process.env.APP_PORT ?? 3000);
   await app.listen(port);
-  // const url = await app.getUrl();
-  // logger.log(`Church Website API is running at: ${url}/api`);
-  // logger.log(`Open the API documentation: ${url}/api/docs`);
-  // logger.log(
-  //   'JWT protected routes accept: Authorization: Bearer <accessToken>',
-  // );
+  const url = await app.getUrl();
+  logger.log(`Church Website API is running at: ${url}/api`);
+  logger.log(`Open the API documentation: ${url}/api/docs`);
+  logger.log(
+    'JWT protected routes accept: Authorization: Bearer <accessToken>',
+  );
 }
 bootstrap().catch((error: unknown) => {
   console.error('Failed to start the Church Website API:', error);

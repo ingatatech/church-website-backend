@@ -106,6 +106,7 @@ export class EmailPublisher {
         this.logger.error(
           `[PasswordReset] Failed to deliver password reset code to ${email}: ${error}`,
         );
+        throw error;
       }
     }
     await this.pubsub.publish(DOMAIN_EVENTS.EMAIL_NOTIFICATION, {

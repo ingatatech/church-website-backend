@@ -34,7 +34,11 @@ import { DomainEventsSubscriber } from '../libs/pubsub/domain-events.subscriber'
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, validate: validateEnvironment }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: '.env.production',
+      validate: validateEnvironment,
+    }),
     EventEmitterModule.forRoot(),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 120 }]),
     MailModule.forRootAsync({
