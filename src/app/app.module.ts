@@ -4,7 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { EventEmitterModule } from '@nestjs/event-emitter';
-import { MailModule, FileMailTransport, SmtpTransport, ResendTransport } from '@nestjs/mail';
+import { MailModule, FileMailTransport, SmtpTransport, ResendTransport, SendGridTransport } from '@nestjs/mail';
 import { validateEnvironment } from '../database/config/validate-env';
 import { InitialChurchSchema1760000000000 } from '../database/migrations/1760000000000-InitialChurchSchema';
 import { DropRoleColumns1791190000000 } from '../database/migrations/1791190000000-DropRoleColumns';
@@ -42,7 +42,11 @@ import { DomainEventsSubscriber } from '../libs/pubsub/domain-events.subscriber'
       useFactory: (config: ConfigService) => {
         const mailTransport = config.get<string>('MAIL_TRANSPORT');
         let transport;
-        if (mailTransport === 'resend') {
+        if (mailTransport === 'sendgrid') {
+          transport = new SendGridTransport({
+            apiKey: config.getOrThrow<string>('SENDGRID_API_KEY'),
+          });
+        } else if (mailTransport === 'resend') {
           transport = new ResendTransport({
             apiKey: config.getOrThrow<string>('RESEND_API_KEY'),
           });
@@ -66,7 +70,7 @@ import { DomainEventsSubscriber } from '../libs/pubsub/domain-events.subscriber'
           transport,
           from: config.get<string>(
             'MAIL_FROM',
-            'Church Portal <onboarding@resend.dev>',
+            'Gilbert nshimyimana <gilbertnshimyimana130@gmail.com>',
           ),
           retry: false,
         };
