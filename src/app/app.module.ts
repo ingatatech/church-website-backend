@@ -14,6 +14,7 @@ import { ExtendSermonsAndAddSpeakers1791220000000 } from '../database/migrations
 import { ExtendMinistryDetails1791230000000 } from '../database/migrations/1791230000000-ExtendMinistryDetails';
 import { AddUserRoles1791240000000 } from '../database/migrations/1791240000000-AddUserRoles';
 import { AddNestOutboxSchema1791250000000 } from '../database/migrations/1791250000000-AddNestOutboxSchema';
+import { CreateMediaAssets1791260000000 } from '../database/migrations/1791260000000-CreateMediaAssets';
 import { PubSubModule } from '../libs/pubsub/pubsub.module';
 import { CacheModule } from '../libs/cache/cache.module';
 import { StorageModule } from '../libs/storage/storage.module';
@@ -111,6 +112,7 @@ import { DomainEventsSubscriber } from '../libs/pubsub/domain-events.subscriber'
           ExtendMinistryDetails1791230000000,
           AddUserRoles1791240000000,
           AddNestOutboxSchema1791250000000,
+          CreateMediaAssets1791260000000,
         ],
         migrationsRun: config.get<string>('TYPEORM_MIGRATIONS_RUN') === 'true',
         autoLoadEntities: true,

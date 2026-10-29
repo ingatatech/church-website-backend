@@ -1,8 +1,12 @@
 import {
   BadRequestException,
+  Body,
   Controller,
   Delete,
   Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   UploadedFile,
@@ -61,35 +65,61 @@ export class StorageController {
     @Query('purpose') purpose?: string,
   ) {
     if (!file) throw new BadRequestException('Upload a supported media file');
-    if (purpose === 'image') {
-      if (!/^image\/(jpeg|png|webp|gif)$/i.test(file.mimetype)) {
-        throw new BadRequestException('Choose a JPEG, PNG, WebP, or GIF image');
-      }
-      if (file.size > 15 * 1024 * 1024) {
-        throw new BadRequestException('Images must be 15 MB or smaller');
-      }
+    if (file.mimetype.startsWith('image/') && file.size > 15 * 1024 * 1024) {
+      throw new BadRequestException('Images must be 15 MB or smaller');
+    }
+    if (!hasExpectedFileSignature(file)) {
+      throw new BadRequestException(
+        'The file contents do not match a supported image, audio, video, or PDF format.',
+      );
     }
     return this.storage
-      .upload(file)
+      .upload(file, purpose)
       .then((result) =>
         ApiResponseDto.created('Media uploaded successfully.', result),
       );
   }
 
-  @Delete()
+  @Patch(':id/alt-text')
   @ApiOperation({
-    summary:
-      'Delete a media resource from Cloudinary by URL or publicId (administrator)',
+    summary: 'Update accessible alternative text for a media asset (administrator)',
   })
-  async deleteMedia(
-    @Query('url') url?: string,
-    @Query('publicId') publicId?: string,
+  async updateAltText(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body('altText') altText: string,
   ) {
-    const target = url || publicId;
-    if (!target) {
-      throw new BadRequestException('Provide an image URL or publicId to delete');
-    }
-    const success = await this.storage.deleteFile(target);
-    return ApiResponseDto.ok('Media processed for deletion.', { success });
+    return ApiResponseDto.ok(
+      'Media alternative text updated successfully.',
+      await this.storage.updateAltText(id, altText),
+    );
   }
+
+  @Delete(':id')
+  @ApiOperation({
+    summary: 'Delete an unreferenced Cloudinary media asset (administrator)',
+  })
+  async deleteMedia(@Param('id', ParseUUIDPipe) id: string) {
+    return ApiResponseDto.ok(
+      'Media deleted successfully.',
+      await this.storage.deleteAsset(id),
+    );
+  }
+}
+
+function hasExpectedFileSignature(file: Express.Multer.File) {
+  const bytes = file.buffer;
+  if (file.mimetype === 'image/jpeg') return bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  if (file.mimetype === 'image/png') return bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+  if (file.mimetype === 'image/gif') return bytes.subarray(0, 6).toString('ascii').match(/^GIF8[79]a$/) !== null;
+  if (file.mimetype === 'image/webp') return bytes.subarray(0, 4).toString('ascii') === 'RIFF' && bytes.subarray(8, 12).toString('ascii') === 'WEBP';
+  if (file.mimetype === 'application/pdf') return bytes.subarray(0, 5).toString('ascii') === '%PDF-';
+  if (file.mimetype === 'audio/wav') return bytes.subarray(0, 4).toString('ascii') === 'RIFF' && bytes.subarray(8, 12).toString('ascii') === 'WAVE';
+  if (['audio/m4a', 'audio/x-m4a', 'video/mp4'].includes(file.mimetype)) return bytes.subarray(4, 8).toString('ascii') === 'ftyp';
+  if (file.mimetype === 'video/webm') return bytes.subarray(0, 4).equals(Buffer.from([0x1a, 0x45, 0xdf, 0xa3]));
+  if (file.mimetype === 'audio/ogg') return bytes.subarray(0, 4).toString('ascii') === 'OggS';
+  if (file.mimetype === 'audio/mpeg' || file.mimetype === 'audio/mp3') {
+    return bytes.subarray(0, 3).toString('ascii') === 'ID3' || (bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0);
+  }
+  if (file.mimetype === 'audio/aac') return bytes[0] === 0xff && (bytes[1] & 0xf6) === 0xf0;
+  return false;
 }

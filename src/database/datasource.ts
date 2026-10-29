@@ -18,8 +18,10 @@ import { ExtendSermonsAndAddSpeakers1791220000000 } from './migrations/179122000
 import { ExtendMinistryDetails1791230000000 } from './migrations/1791230000000-ExtendMinistryDetails';
 import { AddUserRoles1791240000000 } from './migrations/1791240000000-AddUserRoles';
 import { AddNestOutboxSchema1791250000000 } from './migrations/1791250000000-AddNestOutboxSchema';
+import { CreateMediaAssets1791260000000 } from './migrations/1791260000000-CreateMediaAssets';
 import { Speaker } from '../app/modules/sermons/entities/speaker.entity';
 import { User } from '../app/modules/users/entities/user.entity';
+import { MediaAsset } from '../libs/storage/entities/media-asset.entity';
 
 const dataSource = new DataSource({
   type: 'postgres',
@@ -46,6 +48,7 @@ const dataSource = new DataSource({
     AuditLog,
     ContentRecord,
     Submission,
+    MediaAsset,
   ],
   migrations: [
     InitialChurchSchema1760000000000,
@@ -56,6 +59,7 @@ const dataSource = new DataSource({
     ExtendMinistryDetails1791230000000,
     AddUserRoles1791240000000,
     AddNestOutboxSchema1791250000000,
+    CreateMediaAssets1791260000000,
   ],
   synchronize: false,
 });

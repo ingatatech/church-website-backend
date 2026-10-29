@@ -44,7 +44,10 @@ Base path: `/api`. Interactive OpenAPI documentation: `/api/docs`.
 | POST | `/api/inquiries/contact`, `/visitor`, `/prayer` | Public inquiry intake |
 | GET / PATCH | `/api/inquiries/:type` | Active administrator role required for inquiry management |
 | GET | `/api/audit` | Active administrator role required for audit event history |
+| GET | `/api/media` | Active administrator role required; list recent Cloudinary assets and stored metadata |
 | POST | `/api/media/upload` | Active administrator role required for Cloudinary media upload (15 MB image limit) |
+| PATCH | `/api/media/:id/alt-text` | Active administrator role required; update accessible alternative text |
+| DELETE | `/api/media/:id` | Active administrator role required; delete an asset only when no supported content record references it |
 
 Successful responses use `{ success, data, timestamp }` (existing content endpoints also include a message); errors use `{ success: false, statusCode, error, timestamp }`. CMS writes require a JWT Bearer token. Submissions should be handled as private information, especially prayer requests.
 
@@ -55,3 +58,5 @@ All administrative APIs require a valid JWT for an active user whose database ro
 HTTP controllers, services, DTOs, and TypeORM entities live in feature modules under `src/app`. Inquiry, authentication, sermon, and event domain changes publish in-process events; the audit subscriber writes selected event metadata to PostgreSQL. Inquiry events contain only a record ID and type, never contact details or prayer text. Shared response and exception formatting live under `src/helpers`.
 
 Content records use a shared `content_records` table with a typed content category and JSONB `details` for SRS-specific attributes. Announcement lifecycle, category, image, publication date, and expiry date are validated by the content service; public announcement queries enforce visibility dates in the database query. New media uploads are stored in Cloudinary. Existing local media files remain available under `/uploads/`; configure `MEDIA_UPLOAD_DIR` to point to a different legacy media directory.
+
+Cloudinary media entries and editable alt text are indexed in the `media_assets` table. Run `pnpm migration:run` before using the media library after upgrading. The admin can browse, filter, preview, reuse, upload, and edit alternative text for assets. Delete requests are rejected while a supported homepage/content, event, sermon, ministry, or leader record still references the asset. Uploads use the purpose folders `branding`, `homepage`, `ministries`, `leadership`, `sermons`, `events`, `announcements`, `resources`, and `general` under `church-website`; unsupported purposes are rejected. Failed database writes trigger a best-effort Cloudinary cleanup.

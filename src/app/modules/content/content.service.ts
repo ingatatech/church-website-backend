@@ -537,14 +537,7 @@ export class ContentService {
       throw new BadRequestException(
         'Announcements are retained for history. Archive them instead of deleting.',
       );
-    const itemImage =
-      typeof item.details?.imageUrl === 'string'
-        ? item.details.imageUrl
-        : null;
     await this.records.remove(item);
-    if (itemImage) {
-      this.storage?.deleteFile(itemImage).catch(() => null);
-    }
     this.events.emit('content.deleted', {
       id,
       type: item.type,
@@ -888,6 +881,96 @@ export class ContentService {
       this.validateImageSetting(hero.imageUrl, 'hero image');
       this.validateLinkSetting(hero.primaryCtaHref, 'primary hero link');
       this.validateLinkSetting(hero.secondaryCtaHref, 'secondary hero link');
+      if (details.siteHeader != null) {
+        const header = this.objectSetting(details.siteHeader, 'site header');
+        this.requireSettingText(header.brandTagline, 'header brand tagline', 120, false);
+        this.requireSettingText(header.serviceSummary, 'header service summary', 180, false);
+        this.requireSettingText(header.directionsLabel, 'header directions label', 80, false);
+        this.validateLinkSetting(header.directionsHref, 'header directions link');
+        const announcement = this.objectSetting(header.announcement, 'announcement banner');
+        this.requireSettingText(announcement.text, 'announcement text', 300, false);
+        this.requireSettingText(announcement.ctaLabel, 'announcement button label', 80, false);
+        this.validateLinkSetting(announcement.href, 'announcement button link');
+        if (typeof announcement.visible !== 'boolean') {
+          throw new BadRequestException('Announcement visibility must be a boolean');
+        }
+        const headerCta = this.objectSetting(header.primaryCta, 'header button');
+        this.requireSettingText(headerCta.label, 'header button label', 80, false);
+        this.validateLinkSetting(headerCta.href, 'header button link');
+        if (typeof headerCta.visible !== 'boolean') {
+          throw new BadRequestException('Header button visibility must be a boolean');
+        }
+        if (!Array.isArray(header.navigation) || header.navigation.length > 12) {
+          throw new BadRequestException('Add no more than 12 main navigation links');
+        }
+        for (const [index, item] of header.navigation.entries()) {
+          const link = this.objectSetting(item, `navigation link ${index + 1}`);
+          this.requireSettingText(link.label, `navigation link ${index + 1} label`, 80, true);
+          this.validateLinkSetting(link.href, `navigation link ${index + 1}`);
+          if (typeof link.visible !== 'boolean' || link.order !== index) {
+            throw new BadRequestException('Navigation links must have visibility and consecutive display order');
+          }
+        }
+      }
+      if (details.siteFooter != null) {
+        const footer = this.objectSetting(details.siteFooter, 'site footer');
+        const footerTextFields: [string, string, number][] = [
+          ['tagline', 'footer brand tagline', 120],
+          ['description', 'footer description', 1000],
+          ['visitCtaLabel', 'footer visit button label', 80],
+          ['prayerCtaLabel', 'footer prayer button label', 80],
+          ['contactCtaLabel', 'footer contact button label', 80],
+          ['churchColumnTitle', 'footer church column heading', 80],
+          ['ministriesColumnTitle', 'footer ministries column heading', 80],
+          ['resourcesColumnTitle', 'footer resources column heading', 80],
+          ['contactColumnTitle', 'footer contact column heading', 80],
+          ['serviceTitle', 'footer service title', 100],
+          ['serviceSummary', 'footer service summary', 180],
+          ['connectLabel', 'footer social links heading', 80],
+          ['emptySocialText', 'footer empty social message', 180],
+          ['backToTopLabel', 'footer back to top label', 80],
+          ['copyrightSuffix', 'footer copyright text', 120],
+        ];
+        for (const [field, label, maxLength] of footerTextFields) {
+          this.requireSettingText(footer[field], label, maxLength, false);
+        }
+        this.validateLinkSetting(footer.visitCtaHref, 'footer visit button link');
+        this.validateLinkSetting(footer.prayerCtaHref, 'footer prayer button link');
+        this.validateLinkSetting(footer.contactCtaHref, 'footer contact button link');
+        for (const field of ['churchLinks', 'ministryLinks', 'resourceLinks', 'supportLinks', 'legalLinks']) {
+          const links = footer[field];
+          if (!Array.isArray(links) || links.length > 12) {
+            throw new BadRequestException(`Add no more than 12 ${field} in the footer`);
+          }
+          for (const [index, item] of links.entries()) {
+            const link = this.objectSetting(item, `footer ${field} link ${index + 1}`);
+            this.requireSettingText(link.label, `footer ${field} link ${index + 1} label`, 80, true);
+            this.validateLinkSetting(link.href, `footer ${field} link ${index + 1}`);
+            if (typeof link.visible !== 'boolean' || link.order !== index) {
+              throw new BadRequestException(`Footer ${field} must have visibility and consecutive display order`);
+            }
+          }
+        }
+      }
+      for (const field of ['audienceCards', 'aboutCards']) {
+        const cards = details[field];
+        if (cards == null) continue;
+        if (!Array.isArray(cards) || cards.length > 12) {
+          throw new BadRequestException(`Add no more than 12 ${field}`);
+        }
+        for (const [index, item] of cards.entries()) {
+          const card = this.objectSetting(item, `${field} card ${index + 1}`);
+          this.requireSettingText(card.id, `${field} card ${index + 1} id`, 80, true);
+          this.requireSettingText(card.eyebrow, `${field} card ${index + 1} label`, 80, false);
+          this.requireSettingText(card.title, `${field} card ${index + 1} title`, 120, true);
+          this.requireSettingText(card.description, `${field} card ${index + 1} description`, 500, false);
+          this.requireSettingText(card.cta, `${field} card ${index + 1} button label`, 80, true);
+          this.validateLinkSetting(card.href, `${field} card ${index + 1} link`);
+          if (typeof card.visible !== 'boolean' || card.order !== index) {
+            throw new BadRequestException(`${field} cards must have visibility and consecutive display order`);
+          }
+        }
+      }
       const sections = this.objectSetting(details.sections, 'sections');
       const sectionKeys = ['welcome', 'facts', 'services', 'about', 'ministries', 'events', 'announcements', 'sermons', 'testimonials', 'gallery', 'contact'];
       for (const sectionKey of sectionKeys) {
@@ -896,14 +979,36 @@ export class ContentService {
         if (!Number.isInteger(section.order) || Number(section.order) < 0 || Number(section.order) > 100) {
           throw new BadRequestException(`${sectionKey} order must be between 0 and 100`);
         }
+        this.requireSettingText(section.eyebrow, `${sectionKey} section label`, 120, false);
         this.requireSettingText(section.heading, `${sectionKey} heading`, 180, false);
         this.requireSettingText(section.description, `${sectionKey} description`, 500, false);
+        this.requireSettingText(section.primaryCtaLabel, `${sectionKey} primary button label`, 80, false);
+        this.requireSettingText(section.secondaryCtaLabel, `${sectionKey} secondary button label`, 80, false);
+        this.validateLinkSetting(section.primaryCtaHref, `${sectionKey} primary button link`);
+        this.validateLinkSetting(section.secondaryCtaHref, `${sectionKey} secondary button link`);
         if (sectionKey === 'welcome') {
           this.validateImageSetting(section.imageUrl, 'welcome image');
-          this.validateLinkSetting(section.primaryCtaHref, 'welcome section link');
+          this.requireSettingText(section.imageAlt, 'welcome image alternative text', 500, false);
+          this.requireSettingText(section.quote, 'welcome quote', 500, false);
         }
-        if (sectionKey === 'about') {
-          this.validateLinkSetting(section.primaryCtaHref, 'about section link');
+        if (sectionKey === 'contact') {
+          for (const [field, label, maxLength] of [
+            ['prayerHeading', 'prayer message heading', 180],
+            ['prayerQuote', 'prayer quotation', 1000],
+            ['prayerAssurance', 'prayer reassurance', 500],
+            ['visitLabel', 'visit section label', 120],
+            ['addressLabel', 'address label', 80],
+            ['serviceTimesLabel', 'service times label', 80],
+            ['phoneLabel', 'phone label', 80],
+            ['emailLabel', 'email label', 80],
+            ['directionsLabel', 'directions button label', 80],
+            ['visitorGuideLabel', 'visitor guide button label', 80],
+            ['socialLinksLabel', 'social links label', 100],
+            ['mapButtonLabel', 'map button label', 100],
+          ] as const) {
+            this.requireSettingText(section[field], label, maxLength, false);
+          }
+          this.validateLinkSetting(section.visitorGuideHref, 'visitor guide link');
         }
         if (sectionKey === 'contact') {
           this.validateLinkSetting(section.primaryCtaHref, 'primary contact link');
