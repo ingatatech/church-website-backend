@@ -6,6 +6,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -13,6 +14,7 @@ import {
   ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
@@ -24,37 +26,53 @@ import {
   ReplyInquiryDto,
 } from './dto/create-inquiry.dto';
 import { InquiriesService } from './inquiries.service';
+
 @ApiTags('Inquiries')
 @Controller('inquiries')
 @Throttle({ default: { limit: 8, ttl: 60000 } })
 export class InquiriesController {
   constructor(private readonly service: InquiriesService) {}
+
   @Post('contact')
   @ApiOperation({ summary: 'Submit a general contact message' })
   @ApiCreatedResponse()
   contact(@Body() dto: CreateInquiryDto) {
     return this.service.contact(dto);
   }
+
   @Post('visitor')
   @ApiOperation({ summary: 'Submit a first-time visitor inquiry' })
   @ApiCreatedResponse()
   visitor(@Body() dto: CreateInquiryDto) {
     return this.service.visitor(dto);
   }
+
   @Post('prayer')
   @ApiOperation({ summary: 'Submit a private prayer request' })
   @ApiCreatedResponse()
   prayer(@Body() dto: CreateInquiryDto) {
     return this.service.prayer(dto);
   }
+
   @Get(':type')
   @UseGuards(JwtAuthGuard, AdminRoleGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'List inquiries of one type (administrator)' })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    enum: ['all', 'new', 'in_progress', 'resolved'],
+  })
+  @ApiQuery({ name: 'search', required: false, type: String })
   @ApiOkResponse()
-  list(@Param('type') type: string) {
-    return this.service.list(type);
+  list(
+    @Param('type') type: string,
+    @Query('status') status?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.service.list(type, { status, search });
   }
+
   @Patch(':type/:id/status')
   @UseGuards(JwtAuthGuard, AdminRoleGuard)
   @ApiBearerAuth()
@@ -67,6 +85,7 @@ export class InquiriesController {
   ) {
     return this.service.updateStatus(type, id, dto);
   }
+
   @Patch(':type/:id/reply')
   @UseGuards(JwtAuthGuard, AdminRoleGuard)
   @ApiBearerAuth()
