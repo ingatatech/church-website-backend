@@ -13,7 +13,8 @@ export function isCloudinaryImageUrl(
 
   let cloudName = '';
   try {
-    cloudName = cloudinaryUrl ? new URL(cloudinaryUrl).hostname.toLowerCase() : '';
+    const rawUrl = cloudinaryUrl ? cloudinaryUrl.trim().replace(/^CLOUDINARY_URL=\s*/i, '').replace(/^[\"']|[\"']$/g, '').trim() : '';
+    cloudName = rawUrl ? new URL(rawUrl).hostname.toLowerCase() : '';
   } catch {
     cloudName = '';
   }

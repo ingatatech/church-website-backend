@@ -339,12 +339,18 @@ export class CloudinaryStorageService {
   }
 
   private credentials() {
-    const cloudinaryUrl = this.config.get<string>('CLOUDINARY_URL');
+    let cloudinaryUrl = this.config.get<string>('CLOUDINARY_URL')?.trim();
     if (!cloudinaryUrl) {
       throw new ServiceUnavailableException(
         'Cloudinary media storage is not configured.',
       );
     }
+
+    // Strip accidental "CLOUDINARY_URL=" prefix or surrounding quotes if present
+    cloudinaryUrl = cloudinaryUrl
+      .replace(/^CLOUDINARY_URL=\s*/i, '')
+      .replace(/^["']|["']$/g, '')
+      .trim();
 
     try {
       const credentials = new URL(cloudinaryUrl);
