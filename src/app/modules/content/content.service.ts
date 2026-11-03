@@ -1048,12 +1048,29 @@ export class ContentService {
       this.validateOrderedEntries(details.coreValues, 'core values');
       this.validateOrderedEntries(details.beliefs, 'beliefs');
       const socials = details.socialLinks;
-      if (!Array.isArray(socials) || socials.length > 12) throw new BadRequestException('Add no more than 12 social links');
+      if (!Array.isArray(socials) || socials.length > 12) {
+        throw new BadRequestException('Add no more than 12 social links');
+      }
       for (const [index, item] of socials.entries()) {
         const link = this.objectSetting(item, `social link ${index + 1}`);
-        this.requireSettingText(link.label, `social link ${index + 1} label`, 80, false);
+        this.requireSettingText(
+          link.label,
+          `social link ${index + 1} label`,
+          80,
+          false,
+        );
         this.validateLinkSetting(link.url, `social link ${index + 1}`);
-        if (typeof link.visible !== 'boolean') throw new BadRequestException('Social link visibility must be a boolean');
+        if (link.iconUrl != null && link.iconUrl !== '') {
+          this.validateImageSetting(
+            link.iconUrl,
+            `social link ${index + 1} image`,
+          );
+        }
+        if (typeof link.visible !== 'boolean') {
+          throw new BadRequestException(
+            'Social link visibility must be a boolean',
+          );
+        }
       }
     }
   }

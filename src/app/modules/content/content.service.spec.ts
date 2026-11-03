@@ -225,6 +225,87 @@ describe('ContentService announcement management', () => {
     expect(item.details.sections).toHaveProperty('gallery');
   });
 
+  it('accepts uploaded images for church social links', async () => {
+    const item = await service.create({
+      type: 'settings',
+      title: 'Church information',
+      details: {
+        contentKey: 'church-information',
+        profile: { history: '', imageUrl: '' },
+        contact: {
+          city: '',
+          country: '',
+          address: '',
+          phone: '',
+          email: '',
+          directionsUrl: '',
+          mapUrl: '',
+        },
+        mission: { heading: '', statement: '', description: '', visible: true },
+        vision: { heading: '', statement: '', description: '', visible: true },
+        coreValues: [],
+        beliefs: [],
+        socialLinks: [
+          {
+            label: 'Instagram',
+            url: 'https://instagram.com/church',
+            iconUrl: imageUrl,
+            visible: true,
+          },
+        ],
+      },
+    });
+
+    expect(item.details.socialLinks).toMatchObject([
+      { label: 'Instagram', iconUrl: imageUrl },
+    ]);
+  });
+
+  it('rejects social link images that are not hosted by the approved image service', async () => {
+    await expect(
+      service.create({
+        type: 'settings',
+        title: 'Church information',
+        details: {
+          contentKey: 'church-information',
+          profile: { history: '', imageUrl: '' },
+          contact: {
+            city: '',
+            country: '',
+            address: '',
+            phone: '',
+            email: '',
+            directionsUrl: '',
+            mapUrl: '',
+          },
+          mission: {
+            heading: '',
+            statement: '',
+            description: '',
+            visible: true,
+          },
+          vision: {
+            heading: '',
+            statement: '',
+            description: '',
+            visible: true,
+          },
+          coreValues: [],
+          beliefs: [],
+          socialLinks: [
+            {
+              label: 'Instagram',
+              url: 'https://instagram.com/church',
+              iconUrl: 'https://example.com/instagram.png',
+              visible: true,
+            },
+          ],
+        },
+      }),
+    ).rejects.toThrow('social link 1 image must be uploaded to Cloudinary');
+    expect(save).not.toHaveBeenCalled();
+  });
+
   it('creates a validated published weekly service schedule', async () => {
     const item = await service.create({
       type: 'services',
