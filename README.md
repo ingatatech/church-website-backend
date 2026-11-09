@@ -1,62 +1,147 @@
 # Church Website Management API
 
-NestJS and TypeORM backend for the church website SRS. It provides administrator JWT authentication, sermons, events, ministries, public inquiries and their administration, audit logs, media upload, and reusable church content (pages, services, announcements, resources, FAQs, leaders, and testimonials).
+NestJS and TypeORM backend for the church website. It provides public church content and visitor services, together with authenticated administration for content, users, and media.
+
+| Resource | Link |
+| --- | --- |
+| Source repository | [github.com/ingatatech/church-website-backend](https://github.com/ingatatech/church-website-backend) |
+| Deployed API documentation | [church-website-backend-92xx.onrender.com/api/docs](https://church-website-backend-92xx.onrender.com/api/docs) |
+
+## Technology
+
+- NestJS 11 and TypeScript
+- PostgreSQL with TypeORM and versioned migrations
+- JWT authentication and role-based administrator access
+- Swagger / OpenAPI documentation
+- Cloudinary media storage
+- pnpm for package management
+
+## Project structure
+
+```text
+src/
+|-- main.ts                  # App bootstrap, middleware, /api prefix, validation, Swagger
+|-- app/
+|   |-- app.module.ts        # Root module and shared infrastructure wiring
+|   `-- modules/             # HTTP feature modules
+|       |-- admin/           # Admin overview endpoints
+|       |-- audit/           # Audit events and logs
+|       |-- auth/            # Registration, login, JWT, password and Google auth
+|       |-- content/         # CMS records, FAQs, and announcements
+|       |-- events/          # Church events
+|       |-- health/          # API and database health check
+|       |-- inquiries/       # Contact, visitor, and prayer requests
+|       |-- ministries/      # Ministry records
+|       |-- sermons/         # Sermons and speakers
+|       |-- submissions/     # Public form submissions
+|       `-- users/           # User and administrator management
+|-- database/
+|   |-- config/              # Environment validation
+|   |-- migrations/          # PostgreSQL schema changes
+|   |-- scripts/             # Operational database scripts
+|   |-- seeds/               # Initial admin and website content
+|   `-- datasource.ts        # TypeORM CLI data source
+|-- helpers/                 # HTTP filters, interceptors, decorators, responses
+|-- libs/                    # Shared cache, i18n, JWT, OTP, events, queue, storage
+`-- utils/                   # Shared utilities, constants, enums, transformers
+
+test/                        # Jest unit/e2e tests and test configuration
+uploads/                     # Local static/legacy upload directory
+var/mail/                    # Development email output when using file transport
+```
+
+Feature modules generally keep their controllers, services, DTOs, and database entities together. Controllers define HTTP routes, services hold business logic, DTOs validate incoming data, and TypeORM entities map application data to PostgreSQL. Cross-cutting behavior and shared services live in `helpers/` and `libs/`.
+
+## API overview
+
+The API base path is `/api`. Browse the deployed [interactive OpenAPI documentation](https://church-website-backend-92xx.onrender.com/api/docs) for request schemas, response formats, and the complete route list. The local Swagger UI is available at `http://localhost:5004/api/docs` when using the example port.
+
+Main route groups include:
+
+| Route group | Purpose |
+| --- | --- |
+| `/api/auth` | Account registration and verification, login, password recovery, and authentication |
+| `/api/content` | Public published content and CMS content management |
+| `/api/sermons`, `/api/events`, `/api/ministries` | Public church information and administrator management |
+| `/api/inquiries`, `/api/submissions` | Contact, visitor, prayer, and other public form submissions |
+| `/api/admin` | Administrator summaries and management endpoints |
+| `/api/admin/users` | User and role administration |
+| `/api/media` | Media library and Cloudinary uploads |
+| `/api/audit` | Administrator audit history |
+| `/api/health` | API and database health status |
+
+Administrative endpoints require an authenticated active administrator. Public registration creates member accounts; create the first administrator using the bootstrap settings and seed command below.
 
 ## Run locally
 
-1. Create a local PostgreSQL database and configure `.env` from `.env.example`. Keep `.env` out of version control.
-2. Install dependencies with `pnpm install`.
-3. Start the API with `pnpm start:dev`.
+### Prerequisites
 
-Seed website settings with `pnpm seed:website-settings`. This fills missing church location/map details and adds hidden demo social links without replacing existing settings. Replace the sample social URLs with the church's official profiles in Admin â†’ Settings before making them visible. `pnpm seed:homepage` seeds the full demo site content.
+- Node.js and pnpm (the package manifest specifies pnpm `11.1.3`)
+- PostgreSQL
+- A Cloudinary account for media uploads
 
-The service reads PostgreSQL, JWT, Cloudinary, and mail settings from `.env`. Short-lived verification codes, pending registrations, password-reset state, refresh tokens, and domain events are kept in process memory. They are lost when the API restarts and are not shared between API instances; run a single API instance if these flows are needed. Registration verification emails are sent synchronously during registration or resend; the API request waits for the mail transport and reports delivery errors instead of relying on a background worker. In local development, `MAIL_TRANSPORT=file` writes `.eml` messages to `var/mail`; set `MAIL_TRANSPORT=smtp`, `MAIL_FROM`, and `SMTP_URL` to send real email. URL-encode special characters in SMTP credentials. Keep SMTP credentials in the environment or a secret manager, not in source control. `CLOUDINARY_URL` is required and must contain the private Cloudinary API credentials; the API secret stays on the server. All media uploads are sent by the backend to the `church-website` Cloudinary folder, with images, audio/video, and PDFs routed to the matching Cloudinary resource type. Uploads fail if Cloudinary is unavailable; files are never saved to local disk. Image URL validation accepts Cloudinary shared and private CDN URLs. If your Cloudinary account returns URLs from a custom delivery hostname, set `CLOUDINARY_DELIVERY_HOST` in the backend and `NEXT_PUBLIC_CLOUDINARY_DELIVERY_HOST` in the frontend to that hostname. TypeORM schema synchronization is disabled; apply the database migrations with `pnpm migration:run` or enable startup migrations explicitly with `TYPEORM_MIGRATIONS_RUN=true`. Production must set `MAIL_TRANSPORT=smtp`, `MAIL_FROM`, and `SMTP_URL`. `DATABASE_URL` can specify a complete connection string or individual `POSTGRES_*` fields can be used. SSL is disabled for local PostgreSQL when `DATABASE_SSL_CONNECTION=false`.
+### Install and configure
 
-Set a strong `JWT_SECRET` (at least 32 characters), `ADMIN_EMAIL`, and `ADMIN_INITIAL_PASSWORD` (at least 12 characters). Apply the database migrations first, then create the first administrator with `pnpm seed:admin`. The seed creates or promotes the explicitly configured account only when no administrator exists, and stores the initial password as a bcrypt hash. Existing legacy administrator accounts are migrated into the user table as administrators. New self-registered accounts always receive the `member` role. Do not use example values in a deployed environment.
+Run these commands from the repository root:
 
-## Continuous integration
+```sh
+pnpm install
+copy .env.example .env
+```
 
-GitHub Actions builds every pushed branch. Non-`main` branches are built together with the current `main` branch to catch integration errors. The workflow does not create or merge pull requests and does not deploy; review, merge, and deployment remain explicit operations.
+On macOS/Linux, use `cp .env.example .env` instead of `copy`.
 
-## API
+Edit `.env` for your local environment. The example file documents the supported variables, including:
 
-Base path: `/api`. Interactive OpenAPI documentation: `/api/docs`.
+- `APP_PORT` and `CORS_ORIGINS` for the HTTP server and browser origins
+- `DATABASE_URL` or the individual `POSTGRES_*` settings, plus `DATABASE_SSL_CONNECTION`
+- `JWT_SECRET` and `JWT_EXPIRES_IN`
+- `CLOUDINARY_URL` and optional `CLOUDINARY_DELIVERY_HOST`
+- `MAIL_TRANSPORT`, `MAIL_DIRECTORY`, `MAIL_FROM`, and `SMTP_URL`
+- `ADMIN_EMAIL` and `ADMIN_INITIAL_PASSWORD`
 
-| Method | Path | Purpose |
-| --- | --- | --- |
-| GET | `/api/content/:type` | List published records with `page` and `limit` pagination |
-| GET | `/api/content/:type/:slug` | Read one published record |
-| POST | `/api/content` | Create a CMS content record (active administrator role required) |
-| PATCH | `/api/content/:id` | Update a CMS content record (active administrator role required) |
-| DELETE | `/api/content/:id` | Delete a CMS content record (active administrator role required) |
-| GET | `/api/admin/announcements` | Active administrator role required; supports category, status, and search filters |
-| GET | `/api/admin/announcements/:id` | Active administrator role required |
-| POST / PATCH | `/api/admin/announcements` and `/api/admin/announcements/:id` | Active administrator role required |
-| POST | `/api/admin/announcements/:id/:action` | Active administrator role required for publish, schedule, unpublish, or archive |
-| GET | `/api/content/announcements` | List only currently public announcements; optionally filter by controlled category |
-| GET | `/api/content/announcements/:slug` | Read one currently public announcement |
-| POST | `/api/submissions` | Submit `contact`, `prayer`, or `visitor` message |
-| POST | `/api/auth/login` | Administrator login, returns JWT |
-| GET | `/api/auth/profile` | Get current administrator profile (Bearer token) |
-| GET / POST / PATCH / DELETE | `/api/sermons` | Public published sermon reads; active administrator role required for writes |
-| GET / POST / PATCH / DELETE | `/api/events` | Public published event reads; active administrator role required for writes |
-| GET / POST / PATCH / DELETE | `/api/ministries` | Public published ministry reads; active administrator role required for writes |
-| POST | `/api/inquiries/contact`, `/visitor`, `/prayer` | Public inquiry intake |
-| GET / PATCH | `/api/inquiries/:type` | Active administrator role required for inquiry management |
-| GET | `/api/audit` | Active administrator role required for audit event history |
-| GET | `/api/media` | Active administrator role required; list recent Cloudinary assets and stored metadata |
-| POST | `/api/media/upload` | Active administrator role required for Cloudinary media upload (15 MB image limit) |
-| PATCH | `/api/media/:id/alt-text` | Active administrator role required; update accessible alternative text |
-| DELETE | `/api/media/:id` | Active administrator role required; delete an asset only when no supported content record references it |
+Use your own secure values; do not commit `.env` or use example credentials in a deployed environment. `DATABASE_URL`, when set, takes precedence over the individual PostgreSQL connection settings.
 
-Successful responses use `{ success, data, timestamp }` (existing content endpoints also include a message); errors use `{ success: false, statusCode, error, timestamp }`. CMS writes require a JWT Bearer token. Submissions should be handled as private information, especially prayer requests.
+### Prepare the database and start
 
-All administrative APIs require a valid JWT for an active user whose database role is `admin`. The role is looked up from PostgreSQL for each request, so changes take effect without waiting for token expiry. Public registration always creates `member` accounts; create the initial administrator explicitly with `ADMIN_EMAIL`, `ADMIN_INITIAL_PASSWORD`, and `pnpm seed:admin`.
+Create the configured PostgreSQL database, then apply migrations and create the initial administrator:
 
-## Architecture notes
+```sh
+pnpm migration:run
+pnpm seed:admin
+pnpm start:dev
+```
 
-HTTP controllers, services, DTOs, and TypeORM entities live in feature modules under `src/app`. Inquiry, authentication, sermon, and event domain changes publish in-process events; the audit subscriber writes selected event metadata to PostgreSQL. Inquiry events contain only a record ID and type, never contact details or prayer text. Shared response and exception formatting live under `src/helpers`.
+The example `.env` uses port `5004`. Set a `JWT_SECRET` of at least 32 characters and an `ADMIN_INITIAL_PASSWORD` of at least 12 characters. TypeORM schema synchronization is disabled; schema changes are made through migrations. Startup migrations are opt-in with `TYPEORM_MIGRATIONS_RUN=true`.
 
-Content records use a shared `content_records` table with a typed content category and JSONB `details` for SRS-specific attributes. Announcement lifecycle, category, image, publication date, and expiry date are validated by the content service; public announcement queries enforce visibility dates in the database query. New media uploads are stored in Cloudinary. Existing local media files remain available under `/uploads/`; configure `MEDIA_UPLOAD_DIR` to point to a different legacy media directory.
+### Email and media notes
 
-Cloudinary media entries and editable alt text are indexed in the `media_assets` table. Run `pnpm migration:run` before using the media library after upgrading. The admin can browse, filter, preview, reuse, upload, and edit alternative text for assets. Delete requests are rejected while a supported homepage/content, event, sermon, ministry, or leader record still references the asset. Uploads use the purpose folders `branding`, `homepage`, `ministries`, `leadership`, `sermons`, `events`, `announcements`, `resources`, and `general` under `church-website`; unsupported purposes are rejected. Failed database writes trigger a best-effort Cloudinary cleanup.
+- The example uses `MAIL_TRANSPORT=file` for local development. Messages are written to `var/mail/`. For production, configure SMTP using `MAIL_TRANSPORT=smtp`, `MAIL_FROM`, and `SMTP_URL`; keep credentials in environment settings or a secret manager.
+- Media uploads are sent to Cloudinary and require `CLOUDINARY_URL`. New uploads are not saved to the local `uploads/` directory. `MEDIA_UPLOAD_DIR` configures the directory used to serve local/legacy files under `/uploads`.
+- Verification codes, pending registrations, password-reset state, refresh tokens, and domain events use in-process memory. These are not shared across instances and are cleared on restart, so deployments that rely on these flows should run a single API instance.
+
+## Useful commands
+
+| Command | Description |
+| --- | --- |
+| `pnpm start:dev` | Run the API in watch mode |
+| `pnpm build` | Compile the application |
+| `pnpm start:prod` | Run the compiled application from `dist/` |
+| `pnpm test` | Run unit tests |
+| `pnpm test:e2e` | Run end-to-end tests |
+| `pnpm test:cov` | Run tests with coverage |
+| `pnpm migration:run` | Apply pending database migrations |
+| `pnpm migration:revert` | Revert the latest migration |
+| `pnpm seed:admin` | Create or promote the configured initial administrator |
+| `pnpm seed:homepage` | Seed sample homepage content |
+| `pnpm seed:website-settings` | Fill missing website settings |
+
+## Database and content
+
+Migration files are in `src/database/migrations/`; the TypeORM CLI uses `src/database/datasource.ts`. Review and apply migrations when updating the database schema.
+
+The CMS stores reusable content in a shared content-record table, with a content type and structured details. Seeds in `src/database/seeds/` provide initial administrator and website content. Avoid running sample/demo content seeds against production unless that is intentional.
+
+## Tests and CI
+
+Jest test files are colocated with feature code or stored under `test/`. Run `pnpm test` for unit tests and `pnpm test:e2e` for the end-to-end suite. GitHub Actions builds the project; deployment is managed separately.
